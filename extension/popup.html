@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 380px; min-height: 300px; font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #eee; padding: 16px; }
+h1 { font-size: 18px; margin-bottom: 10px; }
+.subtitle { color: #aaa; font-size: 12px; margin-bottom: 14px; }
+.input-group { margin-bottom: 10px; }
+.input-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 4px; }
+.input-group input { width: 100%; padding: 8px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #eee; font-size: 13px; }
+.input-group input:focus { outline: none; border-color: #e94560; }
+.btn { width: 100%; padding: 10px; background: #e94560; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; margin-top: 8px; }
+.btn:hover { background: #c93050; }
+.btn.secondary { background: rgba(255,255,255,0.1); margin-top: 6px; }
+#result { margin-top: 14px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; border-left: 3px solid #e94560; display: none; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.meta { margin-top: 8px; font-size: 11px; color: #aaa; display: flex; gap: 10px; }
+.loading { text-align: center; padding: 20px; color: #aaa; }
+</style>
+</head>
+<body>
+<h1>😂 Анекдот в тему</h1>
+<div class="subtitle">Введите тему или используйте выделенный текст</div>
+
+<div class="input-group">
+  <label>Сервер API</label>
+  <input type="text" id="apiBase" value="http://localhost:8000" placeholder="http://localhost:8000">
+</div>
+
+<div class="input-group">
+  <label>Контекст / Тема</label>
+  <input type="text" id="context" placeholder="Опишите ситуацию...">
+</div>
+
+<button class="btn" id="findBtn">🎯 Анекдот в тему!</button>
+<button class="btn secondary" id="randomBtn">🎲 Случайный</button>
+<button class="btn secondary" id="fromSelection">📋 Из выделенного текста</button>
+
+<div id="loading" class="loading" style="display:none">Подбираю анекдот...</div>
+<div id="result"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function api(path, opts = {}) {
+  const base = $('apiBase').value.replace(/\/$/, '');
+  try {
+    const r = await fetch(base + path, opts);
+    return await r.json();
+  } catch(e) {
+    return null;
+  }
+}
+
+$('findBtn').onclick = async () => {
+  const text = $('context').value.trim();
+  if (!text) return;
+  $('loading').style.display = 'block';
+  $('result').style.display = 'none';
+  const data = await api('/api/jokes/context', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text, count: 1})
+  });
+  $('loading').style.display = 'none';
+  if (data && data.jokes && data.jokes[0]) {
+    const j = data.jokes[0];
+    $('result').innerHTML = `${j.text}<div class="meta">📂 ${j.category} | ⭐ ${j.rating||'?'}${j.semantic_score ? ' | 🎯 '+Math.round(j.semantic_score*100)+'%' : ''}</div>`;
+    $('result').style.display = 'block';
+  }
+};
+
+$('randomBtn').onclick = async () => {
+  $('loading').style.display = 'block';
+  $('result').style.display = 'none';
+  const j = await api('/api/joke/random');
+  $('loading').style.display = 'none';
+  if (j) {
+    $('result').innerHTML = `${j.text}<div class="meta">📂 ${j.category} | ⭐ ${j.rating||'?'}</div>`;
+    $('result').style.display = 'block';
+  }
+};
+
+$('fromSelection').onclick = () => {
+  chrome.tabs.query({active: true, currentWindow: true}, tabs => {
+    chrome.scripting.executeScript({
+      target: {tabId: tabs[0].id},
+      func: () => window.getSelection().toString()
+    }, results => {
+      if (results && results[0] && results[0].result) {
+        $('context').value = results[0].result;
+        $('findBtn').click();
+      }
+    });
+  });
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>😂 Анекдот в тему — AI шутки по контексту</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0f0f1a;
+            --card: #1a1a2e;
+            --card-hover: #222240;
+            --accent: #e94560;
+            --accent2: #0f3460;
+            --accent3: #533483;
+            --text: #eee;
+            --text2: #aaa;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --radius: 16px;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--accent2), var(--accent3), var(--accent));
+            padding: 24px 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .header h1 { font-size: 28px; margin-bottom: 6px; }
+        .header p { color: #ccc; font-size: 14px; }
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .stat-item span { font-weight: bold; color: var(--accent); }
+        .stat-item.llm-on span { color: var(--success); }
+        .stat-item.llm-off span { color: var(--warning); }
+        
+        /* Navigation Tabs */
+        .tabs {
+            display: flex;
+            background: var(--card);
+            padding: 0;
+            border-bottom: 2px solid var(--accent2);
+        }
+        .tab {
+            flex: 1;
+            padding: 14px 10px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        .tab:hover { background: var(--card-hover); }
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: rgba(233,69,96,0.1);
+        }
+        
+        /* Main Content */
+        .container { max-width: 700px; margin: 0 auto; padding: 20px 16px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        /* Context Input */
+        .context-section {
+            background: linear-gradient(135deg, var(--accent2), var(--accent3));
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .context-section h2 { margin-bottom: 12px; font-size: 20px; }
+        .context-section p { color: #bbb; margin-bottom: 16px; font-size: 14px; }
+        
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 14px;
+            color: var(--text);
+            font-size: 15px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(233,69,96,0.3);
+        }
+        textarea::placeholder { color: #666; }
+        
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover { background: #c93050; box-shadow: 0 4px 15px rgba(233,69,96,0.4); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: var(--text);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+        .btn-sm { padding: 8px 16px; font-size: 13px; }
+        
+        /* Joke Cards */
+        .joke-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 14px;
+            border-left: 4px solid var(--accent);
+            transition: all 0.3s;
+            animation: fadeIn 0.4s ease;
+        }
+        .joke-card:hover {
+            background: var(--card-hover);
+            transform: translateX(4px);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .joke-text {
+            font-size: 16px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            margin-bottom: 14px;
+        }
+        
+        .joke-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .joke-category {
+            background: var(--accent2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-transform: capitalize;
+        }
+        
+        .joke-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .joke-tag {
+            background: rgba(255,255,255,0.05);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            color: var(--text2);
+        }
+        
+        .joke-rating {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+        }
+        .star { cursor: pointer; font-size: 18px; }
+        .star:hover { transform: scale(1.3); }
+        .star.active { color: #ffd700; }
+        
+        .joke-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .joke-action-btn {
+            background: rgba(255,255,255,0.05);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            color: var(--text2);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .joke-action-btn:hover { background: rgba(255,255,255,0.15); color: var(--text); }
+        .joke-action-btn.fav-active { color: var(--accent); background: rgba(233,69,96,0.15); }
+        
+        /* Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+        }
+        .category-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        .category-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .category-card .emoji { font-size: 32px; margin-bottom: 8px; }
+        .category-card .name { font-weight: 600; margin-bottom: 4px; }
+        .category-card .count { font-size: 12px; color: var(--text2); }
+        
+        /* Matched categories indicator */
+        .matched-cats {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 14px 0;
+        }
+        .matched-cat {
+            background: rgba(233,69,96,0.2);
+            border: 1px solid var(--accent);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--accent);
+        }
+        
+        /* Search */
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .search-box input {
+            flex: 1;
+            padding: 12px 16px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 15px;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text2);
+        }
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text2);
+        }
+        .empty-state .emoji { font-size: 64px; margin-bottom: 16px; }
+        
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: transform 0.3s;
+            z-index: 1000;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        
+        /* Quick topics */
+        .quick-topics {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .quick-topic {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-topic:hover {
+            background: rgba(233,69,96,0.2);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 600px) {
+            .header h1 { font-size: 22px; }
+            .container { padding: 14px 10px; }
+            .joke-card { padding: 14px; }
+            .categories-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+            .btn-row { flex-direction: column; }
+            .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>😂 Анекдот в тему</h1>
+    <p>AI-помощник для шуток по контексту — просто опишите ситуацию</p>
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-item">📚 <span id="statJokes">0</span> анекдотов</div>
+        <div class="stat-item">📂 <span id="statCats">0</span> категорий</div>
+        <div class="stat-item">⭐ <span id="statRating">0</span> ср. рейтинг</div>
+        <div class="stat-item">❤️ <span id="statFavs">0</span> избранное</div>
+        <div class="stat-item">🔍 <span id="statVocab">0</span> слов в индексе</div>
+        <div class="stat-item" id="llmStatus">🤖 LLM: <span>проверка...</span></div>
+    </div>
+</div>
+
+<div class="tabs">
+    <div class="tab active" data-tab="context">🎯 В тему</div>
+    <div class="tab" data-tab="categories">📂 Категории</div>
+    <div class="tab" data-tab="random">🎲 Случайный</div>
+    <div class="tab" data-tab="favorites">❤️ Избранное</div>
+    <div class="tab" data-tab="search">🔍 Поиск</div>
+</div>
+
+<div class="container">
+    <!-- Tab: Context -->
+    <div class="tab-content active" id="tab-context">
+        <div class="context-section">
+            <h2>🎯 Расскажите ситуацию</h2>
+            <p>Опишите контекст разговора, тему или ситуацию — мы подберём анекдот точно в тему!</p>
+            <textarea id="contextInput" placeholder="Например: сижу на совещании, начальник опять нёс чушь про дедлайны..."></textarea>
+            <div class="quick-topics">
+                <span class="quick-topic" onclick="setContext('работа начальник офис')">💼 Работа</span>
+                <span class="quick-topic" onclick="setContext('программист код баг')">💻 IT</span>
+                <span class="quick-topic" onclick="setContext('семья жена дети дом')">👨‍👩‍👧 Семья</span>
+                <span class="quick-topic" onclick="setContext('деньги зарплата кредит')">💰 Деньги</span>
+                <span class="quick-topic" onclick="setContext('любовь отношения свидание')">💑 Отношения</span>
+                <span class="quick-topic" onclick="setContext('здоровье врач диета')">🏥 Здоровье</span>
+                <span class="quick-topic" onclick="setContext('chatgpt нейросеть искусственный интеллект')">🤖 AI</span>
+                <span class="quick-topic" onclick="setContext('кот кошка мяу')">🐱 Котики</span>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="findJoke()">😂 Анекдот в тему!</button>
+                <button class="btn btn-secondary" onclick="generateJoke()">🤖 AI-генерация</button>
+            </div>
+        </div>
+        <div id="matchedCategories" class="matched-cats" style="display:none"></div>
+        <div id="contextResults"></div>
+    </div>
+    
+    <!-- Tab: Categories -->
+    <div class="tab-content" id="tab-categories">
+        <h2 style="margin-bottom:16px">📂 Категории анекдотов</h2>
+        <div class="categories-grid" id="categoriesGrid"></div>
+        <div id="categoryJokes" style="margin-top:20px"></div>
+    </div>
+    
+    <!-- Tab: Random -->
+    <div class="tab-content" id="tab-random">
+        <div style="text-align:center; margin: 30px 0">
+            <button class="btn btn-primary" onclick="randomJoke()" style="font-size:18px; padding:16px 40px">
+                🎲 Хочу случайный анекдот!
+            </button>
+        </div>
+        <div id="randomResults"></div>
+    </div>
+    
+    <!-- Tab: Favorites -->
+    <div class="tab-content" id="tab-favorites">
+        <h2 style="margin-bottom:16px">❤️ Избранные анекдоты</h2>
+        <div id="favoritesList"></div>
+    </div>
+    
+    <!-- Tab: Search -->
+    <div class="tab-content" id="tab-search">
+        <h2 style="margin-bottom:16px">🔍 Поиск анекдотов</h2>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Введите слово или фразу..." onkeypress="if(event.key==='Enter') searchJokes()">
+            <button class="btn btn-primary" onclick="searchJokes()">Найти</button>
+        </div>
+        <div id="searchResults"></div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';  // Same origin
+
+// Category emojis
+const CAT_EMOJIS = {
+    'работа': '💼', 'айти': '💻', 'деньги': '💰', 'семья': '👨‍👩‍👧',
+    'политика': '🏛️', 'здоровье': '🏥', 'путешествия': '✈️', 'еда': '🍽️',
+    'наука': '🔬', 'спорт': '⚽', 'образование': '🎓', 'отношения': '💑',
+    'коронавирус': '😷', 'искусственный интеллект': '🤖', 'друзья': '🤝', 
+    'котики': '🐱', 'авто': '🚗', 'магазины': '🛒', 'дети': '👶', 'реклама': '📢'
+};
+
+let favorites = [];
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    loadStats();
+    loadCategories();
+    loadFavorites();
+    setupTabs();
+});
+
+function setupTabs() {
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+        });
+    });
+}
+
+async function api(path, opts = {}) {
+    try {
+        const res = await fetch(API + path, opts);
+        return await res.json();
+    } catch(e) {
+        console.error('API error:', e);
+        return null;
+    }
+}
+
+async function loadStats() {
+    const data = await api('/api/stats');
+    if (data) {
+        document.getElementById('statJokes').textContent = data.total_jokes;
+        document.getElementById('statCats').textContent = data.categories;
+        document.getElementById('statRating').textContent = data.avg_rating;
+        document.getElementById('statFavs').textContent = data.favorites_count;
+        document.getElementById('statVocab').textContent = data.vocabulary_size || '?';
+        const llmEl = document.getElementById('llmStatus');
+        if (data.llm_available) {
+            llmEl.className = 'stat-item llm-on';
+            llmEl.innerHTML = '🤖 LLM: <span>✅ ON</span>';
+        } else {
+            llmEl.className = 'stat-item llm-off';
+            llmEl.innerHTML = '🤖 LLM: <span>OFF</span>';
+        }
+    }
+}
+
+async function loadCategories() {
+    const data = await api('/api/categories');
+    if (!data) return;
+    const grid = document.getElementById('categoriesGrid');
+    grid.innerHTML = '';
+    for (const [cat, count] of Object.entries(data)) {
+        const emoji = CAT_EMOJIS[cat] || '📖';
+        grid.innerHTML += `
+            <div class="category-card" onclick="loadCategoryJokes('${cat}')">
+                <div class="emoji">${emoji}</div>
+                <div class="name">${cat}</div>
+                <div class="count">${count} анекдотов</div>
+            </div>
+        `;
+    }
+}
+
+async function loadCategoryJokes(category) {
+    const data = await api(`/api/jokes?category=${category}&count=10`);
+    if (!data) return;
+    document.getElementById('categoryJokes').innerHTML = data.jokes.map(j => renderJokeCard(j)).join('');
+}
+
+function setContext(text) {
+    document.getElementById('contextInput').value = text;
+}
+
+async function findJoke() {
+    const text = document.getElementById('contextInput').value.trim();
+    if (!text) { showToast('Опишите ситуацию или тему!'); return; }
+    
+    const results = document.getElementById('contextResults');
+    results.innerHTML = '<div class="loading"><div class="spinner"></div><p>Подбираю анекдот...</p></div>';
+    
+    const data = await api('/api/jokes/context', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text, count: 3})
+    });
+    
+    if (!data || !data.jokes.length) {
+        results.innerHTML = '<div class="empty-state"><div class="emoji">🤷</div><p>Не нашёл подходящий анекдот. Попробуйте другую тему!</p></div>';
+        return;
+    }
+    
+    // Show matched categories
+    const mc = document.getElementById('matchedCategories');
+    if (data.matched_categories && data.matched_categories.length) {
+        mc.style.display = 'flex';
+        mc.innerHTML = '<span style="font-size:13px;color:#aaa">Темы:</span>' +
+            data.matched_categories.map(c => `<span class="matched-cat">${CAT_EMOJIS[c] || '📖'} ${c}</span>`).join('');
+    } else {
+        mc.style.display = 'none';
+    }
+    
+    results.innerHTML = data.jokes.map((j, i) => renderJokeCard(j, i > 0)).join('');
+}
+
+async function generateJoke() {
+    const text = document.getElementById('contextInput').value.trim();
+    if (!text) { showToast('Опишите ситуацию или тему!'); return; }
+    
+    const results = document.getElementById('contextResults');
+    results.innerHTML = '<div class="loading"><div class="spinner"></div><p>🤖 Генерирую AI-анекдот...</p></div>';
+    
+    const data = await api('/api/jokes/generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text, count: 1})
+    });
+    
+    if (!data) {
+        results.innerHTML = '<div class="empty-state"><div class="emoji">🤖</div><p>AI пока не в настроении. Попробуйте ещё раз!</p></div>';
+        return;
+    }
+    
+    document.getElementById('matchedCategories').style.display = 'none';
+    results.innerHTML = renderJokeCard(data.joke, false);
+}
+
+async function randomJoke() {
+    const results = document.getElementById('randomResults');
+    results.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+    
+    const data = await api('/api/joke/random');
+    if (data) {
+        results.innerHTML = renderJokeCard(data);
+    }
+}
+
+async function searchJokes() {
+    const q = document.getElementById('searchInput').value.trim();
+    if (!q) return;
+    
+    const results = document.getElementById('searchResults');
+    results.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+    
+    const data = await api(`/api/jokes/search?q=${encodeURIComponent(q)}`);
+    if (data && data.jokes.length) {
+        results.innerHTML = `<p style="color:#aaa;margin-bottom:12px">Найдено: ${data.total}</p>` + data.jokes.map(j => renderJokeCard(j)).join('');
+    } else {
+        results.innerHTML = '<div class="empty-state"><div class="emoji">🔍</div><p>Ничего не найдено</p></div>';
+    }
+}
+
+async function loadFavorites() {
+    const data = await api('/api/favorites');
+    if (data && data.jokes) {
+        favorites = data.jokes.map(j => j.id);
+    }
+    renderFavorites();
+}
+
+function renderFavorites() {
+    const list = document.getElementById('favoritesList');
+    // We need to fetch again
+    fetch(API + '/api/favorites').then(r => r.json()).then(data => {
+        if (data && data.jokes && data.jokes.length) {
+            list.innerHTML = data.jokes.map(j => renderJokeCard(j)).join('');
+        } else {
+            list.innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
+        }
+    });
+}
+
+function renderJokeCard(joke, collapsed = false) {
+    const emoji = CAT_EMOJIS[joke.category] || '📖';
+    const isFav = favorites.includes(joke.id);
+    const stars = '⭐'.repeat(Math.round(joke.rating || 0));
+    const tags = (joke.tags || []).map(t => `<span class="joke-tag">#${t}</span>`).join('');
+    const score = joke.semantic_score ? `<span class="joke-tag" style="background:rgba(83,52,131,0.3)">🎯 ${Math.round(joke.semantic_score*100)}%</span>` : '';
+    const genBadge = joke.generated ? `<span class="joke-tag" style="background:rgba(233,69,96,0.2)">🤖 ${joke.generator === 'llm' ? 'GPT' : 'AI'}</span>` : '';
+    
+    return `
+        <div class="joke-card">
+            <div class="joke-text">${joke.text}</div>
+            <div class="joke-meta">
+                <span class="joke-category">${emoji} ${joke.category}</span>
+                <div class="joke-rating">${stars} ${joke.rating || ''}</div>
+            </div>
+            <div class="joke-tags">${tags}${score}${genBadge}</div>
+            <div class="joke-actions">
+                <button class="joke-action-btn ${isFav ? 'fav-active' : ''}" onclick="toggleFavorite(${joke.id}, this)">
+                    ${isFav ? '❤️' : '🤍'} ${isFav ? 'В избранном' : 'В избранное'}
+                </button>
+                <button class="joke-action-btn" onclick="copyJoke(this)" data-text="${joke.text.replace(/"/g, '&quot;')}">
+                    📋 Копировать
+                </button>
+                <button class="joke-action-btn" onclick="shareJoke('${joke.text.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')">
+                    📤 Поделиться
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function toggleFavorite(id, btn) {
+    const isFav = favorites.includes(id);
+    
+    if (isFav) {
+        await api(`/api/favorites/${id}`, {method: 'DELETE'});
+        favorites = favorites.filter(f => f !== id);
+        btn.classList.remove('fav-active');
+        btn.innerHTML = '🤍 В избранное';
+    } else {
+        await api('/api/favorites', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({joke_id: id})
+        });
+        favorites.push(id);
+        btn.classList.add('fav-active');
+        btn.innerHTML = '❤️ В избранном';
+    }
+    
+    loadStats();
+}
+
+function copyJoke(btn) {
+    const text = btn.dataset.text;
+    navigator.clipboard.writeText(text).then(() => showToast('Анекдот скопирован! 📋'));
+}
+
+function shareJoke(text) {
+    if (navigator.share) {
+        navigator.share({title: '😂 Анекдот в тему', text: text});
+    } else {
+        navigator.clipboard.writeText(text).then(() => showToast('Анекдот скопирован для шаринга!'));
+    }
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

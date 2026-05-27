@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  anekdot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: anekdot-v-temu
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - ../data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/stats')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
