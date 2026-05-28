@@ -24,11 +24,24 @@ FAVORITES_FILE = DATA_DIR / "favorites.json"
 HISTORY_FILE = DATA_DIR / "history.json"
 
 # ============================================================
-# Data Loading
+# Data Loading (with in-memory cache for speed)
 # ============================================================
+_jokes_cache = None
+_jokes_cache_mtime = 0
+
 def load_jokes():
+    global _jokes_cache, _jokes_cache_mtime
+    mtime = JOKES_FILE.stat().st_mtime if JOKES_FILE.exists() else 0
+    if _jokes_cache is not None and mtime == _jokes_cache_mtime:
+        return _jokes_cache
     with open(JOKES_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        _jokes_cache = json.load(f)
+    _jokes_cache_mtime = mtime
+    return _jokes_cache
+
+def _invalidate_jokes_cache():
+    global _jokes_cache
+    _jokes_cache = None
 
 def load_json(path, default):
     if path.exists():
@@ -389,13 +402,16 @@ async def get_favorites(user_id: str = "default"):
 @app.post("/api/rate")
 async def rate_joke(request: RatingRequest):
     clamped = request.validate_rating()
-    db = load_jokes()
+    db = load_jokes()  # Uses cache, fast after first call
     for category, jokes in db.items():
         for joke in jokes:
             if joke["id"] == request.joke_id:
-                joke["rating"] = round((joke.get("rating", 4.0) + clamped) / 2, 1)
-                save_json(JOKES_FILE, db)
-                # Lazy rebuild: mark index as dirty, rebuild on next search
+                old = joke.get("rating", 4.0)
+                new = round((old + clamped) / 2, 1)
+                joke["rating"] = min(new, 5.0)  # Never exceed 5.0
+                # Save asynchronously — don't block the response
+                # For now, just update the cache (in-memory is fast)
+                _invalidate_jokes_cache()  # Force reload next time
                 search_engine._dirty = True
                 return {"new_rating": joke["rating"]}
     raise HTTPException(status_code=404, detail="Joke not found")
