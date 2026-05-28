@@ -330,9 +330,9 @@ async def get_jokes(
     return {"jokes": jokes, "total": len(jokes)}
 
 @app.get("/api/jokes/search")
-async def search_jokes(q: str = Query(..., min_length=2)):
+async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10, ge=1, le=50)):
     """Full-text search using TF-IDF semantic search."""
-    results = search_engine.search(q, top_k=20)
+    results = search_engine.search(q, top_k=limit)
     return {"jokes": results, "total": len(results)}
 
 @app.post("/api/jokes/context")
