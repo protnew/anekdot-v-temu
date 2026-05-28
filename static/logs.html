@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Анекдот в тему — Логи</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a1a; color:#e0e0e0; font-family:'Consolas','Courier New',monospace; font-size:13px; }
+.header { background:#1a1a2e; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; }
+.header h1 { font-size:16px; color:#fff; }
+.header h1 span { color:#f5c518; }
+.status { display:flex; gap:15px; align-items:center; }
+.dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:5px; }
+.dot.green { background:#4caf50; box-shadow:0 0 6px #4caf50; }
+.dot.red { background:#f44336; box-shadow:0 0 6px #f44336; }
+.toolbar { background:#12122a; padding:8px 20px; display:flex; gap:8px; border-bottom:1px solid #222; flex-wrap:wrap; }
+.btn { background:#2a2a4a; color:#ccc; border:1px solid #444; padding:5px 14px; cursor:pointer; border-radius:3px; font-family:inherit; font-size:12px; }
+.btn:hover { background:#3a3a6a; color:#fff; }
+.btn.active { background:#4a4a8a; color:#fff; border-color:#666; }
+.btn.copy { background:#1b5e20; border-color:#2e7d32; }
+.btn.copy:hover { background:#2e7d32; }
+.btn.clear { background:#b71c1c; border-color:#c62828; }
+.btn.clear:hover { background:#c62828; }
+.filters { display:flex; gap:6px; align-items:center; margin-left:auto; }
+.filters span { color:#888; font-size:11px; }
+.log-area { padding:10px 0; height:calc(100vh - 90px); overflow-y:auto; scroll-behavior:smooth; }
+.log-line { padding:3px 20px; border-bottom:1px solid #111; white-space:pre-wrap; word-break:break-all; line-height:1.5; }
+.log-line:hover { background:#1a1a3a; }
+.log-line .ts { color:#666; margin-right:8px; }
+.log-line.info { color:#4fc3f7; }
+.log-line.ok { color:#66bb6a; }
+.log-line.err { color:#ef5350; background:#1a0000; }
+.log-line.warn { color:#ffa726; }
+.log-line.joke { color:#f5c518; background:#1a1a00; font-size:14px; padding:8px 20px; }
+.log-line.voice { color:#ab47bc; }
+.log-line .tag { display:inline-block; background:#333; color:#aaa; padding:0 5px; border-radius:2px; font-size:10px; margin-right:6px; min-width:40px; text-align:center; }
+.log-line.joke .tag { background:#5c4b00; color:#f5c518; }
+.log-line.err .tag { background:#4a0000; color:#ef5350; }
+.log-line.voice .tag { background:#2a0040; color:#ab47bc; }
+.empty { text-align:center; color:#555; padding:60px; font-size:16px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span>😂</span> Анекдот в тему — Логи</h1>
+  <div class="status">
+    <span><span class="dot" id="dotApi"></span><span id="apiStatus">API: ...</span></span>
+    <span><span class="dot" id="dotDb"></span><span id="dbStatus">База: ...</span></span>
+    <span><span class="dot" id="dotWhisper"></span><span id="whisperStatus">Whisper: ...</span></span>
+  </div>
+</div>
+
+<div class="toolbar">
+  <button class="btn copy" onclick="copyLogs()">📋 Копировать всё</button>
+  <button class="btn clear" onclick="clearLogs()">🗑 Очистить</button>
+  <div class="filters">
+    <span>Фильтр:</span>
+    <button class="btn active" data-filter="all" onclick="setFilter('all',this)">Всё</button>
+    <button class="btn" data-filter="joke" onclick="setFilter('joke',this)">Шутки</button>
+    <button class="btn" data-filter="err" onclick="setFilter('err',this)">Ошибки</button>
+    <button class="btn" data-filter="voice" onclick="setFilter('voice',this)">Голос</button>
+  </div>
+</div>
+
+<div class="log-area" id="logArea">
+  <div class="empty" id="emptyMsg">Загрузка логов...</div>
+</div>
+
+<script>
+const API = window.location.origin;
+let allLogs = [];
+let currentFilter = 'all';
+let lastLen = 0;
+
+async function checkStatus() {
+  // API
+  try {
+    const r = await fetch(API + '/api/stats');
+    const d = await r.json();
+    document.getElementById('dotApi').className = 'dot green';
+    document.getElementById('apiStatus').textContent = 'API: OK (' + d.total_jokes + ' шуток)';
+    document.getElementById('dotDb').className = 'dot green';
+    document.getElementById('dbStatus').textContent = 'База: ' + d.total_jokes;
+  } catch(e) {
+    document.getElementById('dotApi').className = 'dot red';
+    document.getElementById('apiStatus').textContent = 'API: недоступен';
+    document.getElementById('dotDb').className = 'dot red';
+    document.getElementById('dbStatus').textContent = 'База: ?';
+  }
+  // Whisper (just check if voice_monitor logged recently)
+  const voiceLogs = allLogs.filter(l => l.type === 'voice');
+  if (voiceLogs.length > 0) {
+    document.getElementById('dotWhisper').className = 'dot green';
+    document.getElementById('whisperStatus').textContent = 'Whisper: работает';
+  } else {
+    document.getElementById('dotWhisper').className = 'dot';
+    document.getElementById('whisperStatus').textContent = 'Whisper: нет данных';
+  }
+}
+
+function addLogEntry(text, type) {
+  const now = new Date();
+  const ts = now.toTimeString().slice(0,8);
+  allLogs.push({ ts, text, type });
+  renderLog({ ts, text, type });
+}
+
+function renderLog(entry) {
+  if (currentFilter !== 'all' && entry.type !== currentFilter) return;
+  const area = document.getElementById('logArea');
+  document.getElementById('emptyMsg').style.display = 'none';
+  const div = document.createElement('div');
+  div.className = 'log-line ' + entry.type;
+  div.dataset.type = entry.type;
+  const tagMap = {
+    info: 'INFO', ok: 'OK', err: 'ERR', warn: 'WARN',
+    joke: '😂', voice: '🎤'
+  };
+  div.innerHTML = '<span class="ts">' + entry.ts + '</span><span class="tag">' +
+    (tagMap[entry.type] || 'LOG') + '</span>' + escapeHtml(entry.text);
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filters .btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  rerenderAll();
+}
+
+function rerenderAll() {
+  const area = document.getElementById('logArea');
+  area.innerHTML = '';
+  const filtered = currentFilter === 'all' ? allLogs : allLogs.filter(l => l.type === currentFilter);
+  if (filtered.length === 0) {
+    area.innerHTML = '<div class="empty">Нет логов для этого фильтра</div>';
+    return;
+  }
+  filtered.forEach(entry => renderLog(entry));
+}
+
+function copyLogs() {
+  const filtered = currentFilter === 'all' ? allLogs : allLogs.filter(l => l.type === currentFilter);
+  const text = filtered.map(l => '[' + l.ts + '] [' + l.type + '] ' + l.text).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn.copy');
+    const orig = btn.textContent;
+    btn.textContent = '✅ Скопировано!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function clearLogs() {
+  allLogs = [];
+  rerenderAll();
+}
+
+// === Основной цикл ===
+
+// Стартовые логи
+addLogEntry('Веб-интерфейс логов запущен', 'ok');
+addLogEntry('Подключение к API ' + API + '...', 'info');
+
+// Проверка статуса
+checkStatus();
+setInterval(checkStatus, 10000);
+
+// Тест: получить случайную шутку
+async function testJoke() {
+  try {
+    const r = await fetch(API + '/api/joke/random');
+    const d = await r.json();
+    addLogEntry('[' + d.category + '] ' + d.text, 'joke');
+  } catch(e) {
+    addLogEntry('Не удалось получить шутку: ' + e.message, 'err');
+  }
+}
+
+// Тест: контекстный поиск
+async function testContext(phrase) {
+  try {
+    const r = await fetch(API + '/api/jokes/context', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: phrase, count: 1})
+    });
+    const d = await r.json();
+    if (d.jokes && d.jokes.length > 0) {
+      const j = d.jokes[0];
+      addLogEntry('Контекст "' + phrase.slice(0,30) + '..." → [' + j.category + '] ' + j.text, 'joke');
+    } else {
+      addLogEntry('Контекст "' + phrase.slice(0,30) + '..." → нет шуток', 'warn');
+    }
+  } catch(e) {
+    addLogEntry('Ошибка поиска: ' + e.message, 'err');
+  }
+}
+
+// Кнопки тестов
+async function runAllTests() {
+  addLogEntry('=== Запуск тестов ===', 'info');
+  await testJoke();
+  await testContext('начальник вызвал на ковёр');
+  await testContext('программист всю ночь писал код');
+  await testContext('муж пришёл поздно жена ругается');
+  addLogEntry('=== Тесты завершены ===', 'ok');
+}
+
+// Автозапуск тестов через 2 сек
+setTimeout(runAllTests, 2000);
+</script>
+</body>
+</html>

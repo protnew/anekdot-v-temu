@@ -300,6 +300,11 @@ async def index():
     html_path = BASE_DIR / "static" / "index.html"
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
+@app.get("/logs", response_class=HTMLResponse)
+async def logs_page():
+    html_path = BASE_DIR / "static" / "logs.html"
+    return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
+
 @app.get("/api/categories")
 async def get_categories():
     db = load_jokes()
