@@ -49,7 +49,7 @@ import speech_recognition as sr
 # ============================================================
 
 # URL бэкенда «Анекдот в тему»
-API_URL = "http://localhost:8000/api/jokes/context"
+API_URL = os.environ.get("BASE_URL", "http://localhost:8000") + "/api/jokes/context"
 
 # Длительность одного «чанка» записи с микрофона (секунды)
 CHUNK_DURATION_SECONDS = 7

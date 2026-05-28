@@ -32,10 +32,10 @@ import os
 # ============================================================
 
 # URL бэкенда для случайной шутки
-API_URL = "http://localhost:8000/api/joke/random"
+API_URL = os.environ.get("BASE_URL", "http://localhost:8000") + "/api/joke/random"
 
 # URL для контекстного подбора (если voice_monitor передал контекст)
-API_CONTEXT_URL = "http://localhost:8000/api/jokes/context"
+API_CONTEXT_URL = os.environ.get("BASE_URL", "http://localhost:8000") + "/api/jokes/context"
 
 # Интервал обновления шутки (секунды) — случайно 15..20
 UPDATE_INTERVAL_MIN = 15

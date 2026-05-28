@@ -51,7 +51,7 @@ def main():
         start_process("overlay", [PYTHON, "overlay.py"])
     
     if mode == "server":
-        print("Только бэкенд. Открой http://localhost:8000")
+        port = os.environ.get("PORT", "8000"); print(f"Только бэкенд. Открой http://localhost:{port}")
     
     print()
     print("=" * 50)

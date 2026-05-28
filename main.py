@@ -838,9 +838,10 @@ async def alice_webhook(request: dict):
 def api_post(path, data):
     """Internal API call for Alice webhook."""
     import urllib.request
+    base_url = os.environ.get("BASE_URL", "http://localhost:8000")
     try:
         req = urllib.request.Request(
-            f"http://localhost:8000{path}",
+            f"{base_url}{path}",
             data=json.dumps(data).encode(),
             headers={"Content-Type": "application/json"}
         )
@@ -906,5 +907,6 @@ async def get_stats():
 
 if __name__ == "__main__":
     import uvicorn
-    print("😂 Запуск «Анекдот в тему» v3.0 на http://localhost:8000")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    print(f"Запуск Анекдот в тему v3.1 на http://localhost:{port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
