@@ -43,6 +43,41 @@ def _invalidate_jokes_cache():
     global _jokes_cache
     _jokes_cache = None
 
+# Periodic save for ratings (don't block API responses)
+_pending_rating_save = False
+_last_save_time = 0
+
+def _schedule_rating_save():
+    """Mark that ratings need to be saved. Actual save happens on next load or shutdown."""
+    global _pending_rating_save, _last_save_time
+    _pending_rating_save = True
+
+@app.on_event("shutdown")
+async def _save_on_shutdown():
+    """Save pending ratings when server shuts down."""
+    global _pending_rating_save, _jokes_cache
+    if _pending_rating_save and _jokes_cache is not None:
+        save_json(JOKES_FILE, _jokes_cache)
+        print("💾 Ratings saved to disk on shutdown")
+
+@app.on_event("startup")
+async def _start_periodic_flush():
+    """Background task: flush ratings to disk every 60 seconds."""
+    import asyncio
+    async def _flush_loop():
+        global _pending_rating_save, _last_save_time
+        while True:
+            await asyncio.sleep(60)
+            if _pending_rating_save and _jokes_cache is not None:
+                try:
+                    save_json(JOKES_FILE, _jokes_cache)
+                    _pending_rating_save = False
+                    _last_save_time = time.time()
+                    print("💾 Periodic rating flush OK")
+                except Exception as e:
+                    print(f"⚠️ Rating flush error: {e}")
+    asyncio.create_task(_flush_loop())
+
 def load_json(path, default):
     if path.exists():
         with open(path, "r", encoding="utf-8") as f:
@@ -60,6 +95,28 @@ def get_all_jokes():
         for joke in items:
             jokes.append({**joke, "category": category})
     return jokes
+
+# ============================================================
+# English Jokes (for multi-language support)
+# ============================================================
+EN_JOKES = [
+    {"id": 8001, "text": "Why do programmers prefer dark mode? Because light attracts bugs.", "rating": 4.6, "tags": ["programming", "dark-mode"], "category": "it"},
+    {"id": 8002, "text": "I told my wife she was drawing her eyebrows too high. She looked surprised.", "rating": 4.4, "tags": ["wife", "eyebrows"], "category": "family"},
+    {"id": 8003, "text": "Why don't scientists trust atoms? Because they make up everything.", "rating": 4.5, "tags": ["science", "atoms"], "category": "science"},
+    {"id": 8004, "text": "I asked the librarian if they had books about paranoia. She whispered, 'They're right behind you.'", "rating": 4.3, "tags": ["library", "paranoia"], "category": "misc"},
+    {"id": 8005, "text": "Why did the scarecrow win an award? He was outstanding in his field.", "rating": 4.2, "tags": ["scarecrow", "pun"], "category": "misc"},
+    {"id": 8006, "text": "Parallel lines have so much in common. It's a shame they'll never meet.", "rating": 4.4, "tags": ["math", "geometry"], "category": "science"},
+    {"id": 8007, "text": "I'm reading a book about anti-gravity. It's impossible to put down.", "rating": 4.3, "tags": ["gravity", "reading"], "category": "science"},
+    {"id": 8008, "text": "What do you call a fake noodle? An impasta.", "rating": 4.1, "tags": ["food", "pun"], "category": "food"},
+    {"id": 8009, "text": "ChatGPT walks into a bar. The bartender says, 'We don't serve your type here.' ChatGPT says, 'That's fine, I'll generate my own drinks.'", "rating": 4.7, "tags": ["ai", "chatgpt"], "category": "ai"},
+    {"id": 8010, "text": "I used to hate facial hair, but then it grew on me.", "rating": 4.2, "tags": ["beard", "pun"], "category": "misc"},
+    {"id": 8011, "text": "The future, the present, and the past walked into a bar. Things got tense.", "rating": 4.3, "tags": ["time", "grammar"], "category": "misc"},
+    {"id": 8012, "text": "Why do Java developers wear glasses? Because they can't C#.", "rating": 4.5, "tags": ["java", "programming"], "category": "it"},
+    {"id": 8013, "text": "My boss told me to have a good day, so I went home.", "rating": 4.6, "tags": ["boss", "work"], "category": "work"},
+    {"id": 8014, "text": "I told my computer I needed a break. Now it won't stop sending me KitKat ads.", "rating": 4.2, "tags": ["computer", "ads"], "category": "it"},
+    {"id": 8015, "text": "A SQL query walks into a bar, sees two tables, and asks: 'Can I join you?'", "rating": 4.5, "tags": ["sql", "database"], "category": "it"},
+]
+
 
 # ============================================================
 # TF-IDF Semantic Search Engine
@@ -84,6 +141,8 @@ class SemanticSearchEngine:
 
     def _build_index(self):
         self.jokes = get_all_jokes()
+        # Include EN_JOKES in search index
+        self.jokes.extend([{**j, "category": f"en_{j.get('category', 'misc')}"} for j in EN_JOKES])
         if not self.jokes:
             return
         # Combine text + tags + category for richer matching
@@ -409,9 +468,8 @@ async def rate_joke(request: RatingRequest):
                 old = joke.get("rating", 4.0)
                 new = round((old + clamped) / 2, 1)
                 joke["rating"] = min(new, 5.0)  # Never exceed 5.0
-                # Save asynchronously — don't block the response
-                # For now, just update the cache (in-memory is fast)
-                _invalidate_jokes_cache()  # Force reload next time
+                # Schedule save — don't block response
+                _schedule_rating_save()
                 search_engine._dirty = True
                 return {"new_rating": joke["rating"]}
     raise HTTPException(status_code=404, detail="Joke not found")
@@ -693,23 +751,6 @@ async def analytics_stats():
 # ============================================================
 # #28: Multi-language (English jokes)
 # ============================================================
-EN_JOKES = [
-    {"id": 8001, "text": "Why do programmers prefer dark mode? Because light attracts bugs.", "rating": 4.6, "tags": ["programming", "dark-mode"], "category": "it"},
-    {"id": 8002, "text": "I told my wife she was drawing her eyebrows too high. She looked surprised.", "rating": 4.4, "tags": ["wife", "eyebrows"], "category": "family"},
-    {"id": 8003, "text": "Why don't scientists trust atoms? Because they make up everything.", "rating": 4.5, "tags": ["science", "atoms"], "category": "science"},
-    {"id": 8004, "text": "I asked the librarian if they had books about paranoia. She whispered, 'They're right behind you.'", "rating": 4.3, "tags": ["library", "paranoia"], "category": "misc"},
-    {"id": 8005, "text": "Why did the scarecrow win an award? He was outstanding in his field.", "rating": 4.2, "tags": ["scarecrow", "pun"], "category": "misc"},
-    {"id": 8006, "text": "Parallel lines have so much in common. It's a shame they'll never meet.", "rating": 4.4, "tags": ["math", "geometry"], "category": "science"},
-    {"id": 8007, "text": "I'm reading a book about anti-gravity. It's impossible to put down.", "rating": 4.3, "tags": ["gravity", "reading"], "category": "science"},
-    {"id": 8008, "text": "What do you call a fake noodle? An impasta.", "rating": 4.1, "tags": ["food", "pun"], "category": "food"},
-    {"id": 8009, "text": "ChatGPT walks into a bar. The bartender says, 'We don't serve your type here.' ChatGPT says, 'That's fine, I'll generate my own drinks.'", "rating": 4.7, "tags": ["ai", "chatgpt"], "category": "ai"},
-    {"id": 8010, "text": "I used to hate facial hair, but then it grew on me.", "rating": 4.2, "tags": ["beard", "pun"], "category": "misc"},
-    {"id": 8011, "text": "The future, the present, and the past walked into a bar. Things got tense.", "rating": 4.3, "tags": ["time", "grammar"], "category": "misc"},
-    {"id": 8012, "text": "Why do Java developers wear glasses? Because they can't C#.", "rating": 4.5, "tags": ["java", "programming"], "category": "it"},
-    {"id": 8013, "text": "My boss told me to have a good day, so I went home.", "rating": 4.6, "tags": ["boss", "work"], "category": "work"},
-    {"id": 8014, "text": "I told my computer I needed a break. Now it won't stop sending me KitKat ads.", "rating": 4.2, "tags": ["computer", "ads"], "category": "it"},
-    {"id": 8015, "text": "A SQL query walks into a bar, sees two tables, and asks: 'Can I join you?'", "rating": 4.5, "tags": ["sql", "database"], "category": "it"},
-]
 
 @app.get("/api/jokes/en")
 async def english_jokes(count: int = Query(5, ge=1, le=15)):

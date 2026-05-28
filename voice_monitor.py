@@ -212,10 +212,20 @@ class JokeFetcher:
 def display_jokes(data: dict) -> None:
     """
     Красиво вывести полученные шутки в консоль.
-    Позже эта функция будет заменена на overlay UI.
+    Также записать в data/latest_joke.json для overlay.
     """
     jokes = data.get("jokes", [])
     categories = data.get("matched_categories", [])
+
+    # Write to shared file for overlay
+    if jokes:
+        try:
+            bridge_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "latest_joke.json")
+            best = jokes[0] if jokes else {}
+            with open(bridge_path, "w", encoding="utf-8") as f:
+                json.dump({"joke": best, "timestamp": time.time()}, f, ensure_ascii=False)
+        except Exception:
+            pass
 
     if not jokes:
         logger.info("😶 Шуток не найдено для данного контекста")

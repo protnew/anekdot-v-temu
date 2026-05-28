@@ -24,6 +24,8 @@ import json
 import random
 import logging
 import sys
+import time
+import os
 
 # ============================================================
 # Настройки
@@ -83,10 +85,27 @@ logger = logging.getLogger("overlay")
 
 def fetch_joke() -> str:
     """
-    Получить случайную шутку с бэкенда.
-    Возвращает текст шутки (строка).
-    При ошибке — возвращает заглушку.
+    Получить шутку — сначала из voice_monitor (latest_joke.json),
+    если нет свежей — случайную с бэкенда.
     """
+    # 1. Проверяем есть ли свежая шутка от voice_monitor
+    try:
+        bridge_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "latest_joke.json")
+        if os.path.exists(bridge_path):
+            with open(bridge_path, "r", encoding="utf-8") as f:
+                bridge = json.load(f)
+            ts = bridge.get("timestamp", 0)
+            joke = bridge.get("joke", {})
+            # Если шутка свежая (< 30 сек) — берём её
+            if joke and (time.time() - ts) < 30:
+                text = joke.get("text", "").strip()
+                if text:
+                    logger.info("📍 Контекстная шутка от voice_monitor (cat=%s)", joke.get("category"))
+                    return text
+    except Exception:
+        pass
+
+    # 2. Fallback — случайная шутка с бэкенда
     try:
         req = urllib.request.Request(
             API_URL,
