@@ -4,8 +4,8 @@ title Anekdot v Temu
 
 echo.
 echo ========================================
-echo    ANEKDOT V TEMU - Zapusk
-echo    Slutshu razgovor, podbirayu shutki
+echo    ANEKDOT V TEMU v3.3
+echo    8611 anekdotov, 21 kategoriya
 echo ========================================
 echo.
 
@@ -45,24 +45,34 @@ if not exist "venv\Scripts\python.exe" (
 echo.
 echo Vyberi rezhim:
 echo   [1] Veb-interfeys - otkroy http://localhost:8000
-echo   [2] Golos - govorish v mikrofon, shutki cherez 20 sek
-echo   [3] Polnyy - golos + shutki poverh vseh okon
-echo   [4] Vyhod
+echo   [2] Golos (base) - govorish v mikrofon, shutki cherez 20 sek
+echo   [3] Golos (small) - luchshe kachestvo, dolgo gryzit model
+echo   [4] Polnyy - golos + shutki poverh vseh okon
+echo   [5] Vyhod
 echo.
 
-set /p mode="Vvedi nomer (1-4): "
+set /p mode="Vvedi nomer (1-5): "
 
 if "%mode%"=="1" (
     echo.
     echo Otkroy v brauzere http://localhost:8000
+    echo Logi: http://localhost:8000/logs
     echo.
     python launcher.py server
 ) else if "%mode%"=="2" (
     echo.
     echo Govori v mikrofon - shutki poyavyatsya cherez 20 sek!
     echo.
+    set WHISPER_MODEL=base
     python launcher.py voice
 ) else if "%mode%"=="3" (
+    echo.
+    echo Zagruzka Whisper small (500MB) - pervyy raz 1-2 minuty...
+    echo Govori v mikrofon - shutki poyavyatsya cherez 20 sek!
+    echo.
+    set WHISPER_MODEL=small
+    python launcher.py voice
+) else if "%mode%"=="4" (
     echo.
     echo Vse zapushcheno - overlay poyavitsya v uglu ekrana
     echo.
