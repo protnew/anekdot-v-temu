@@ -862,10 +862,53 @@ async def speech_to_text(request: dict):
 
 @app.post("/api/voice/tts")
 async def text_to_speech(request: dict):
-    """Stub for text-to-speech. Returns text that would be spoken."""
+    """Text-to-speech: converts joke text to MP3 audio via gTTS (Google TTS, free)."""
     text = request.get("text", "")
-    return {"text": text, "audio_url": None, "note": "In production, use TTS API for real audio"}
+    if not text:
+        return {"error": "text is required"}
+    
+    try:
+        from gtts import gTTS
+        import tempfile, os
+        
+        # Ограничиваем длину (gTTS лимит ~5000 символов)
+        text = text[:2000]
+        
+        tts = gTTS(text=text, lang='ru', slow=False)
+        
+        # Сохраняем в data/tts/
+        tts_dir = BASE_DIR / "data" / "tts"
+        tts_dir.mkdir(parents=True, exist_ok=True)
+        
+        import hashlib
+        fname = hashlib.md5(text.encode()).hexdigest()[:12] + ".mp3"
+        fpath = tts_dir / fname
+        
+        if not fpath.exists():
+            tts.save(str(fpath))
+        
+        return {
+            "text": text,
+            "audio_file": f"/data/tts/{fname}",
+            "duration_estimate": f"{len(text) // 15} сек",
+            "generator": "gTTS (Google TTS, free)"
+        }
+    except ImportError:
+        return {"error": "gTTS not installed. Run: pip install gTTS"}
+    except Exception as e:
+        return {"error": f"TTS failed: {str(e)}"}
 
+
+
+
+@app.get("/data/tts/{filename}")
+async def serve_tts_file(filename: str):
+    """Serve generated TTS audio files."""
+    from fastapi.responses import FileResponse
+    fpath = BASE_DIR / "data" / "tts" / filename
+    if fpath.exists():
+        return FileResponse(str(fpath), media_type="audio/mpeg")
+    return {"error": "file not found"}
 
 # ============================================================
 # Extended Stats
