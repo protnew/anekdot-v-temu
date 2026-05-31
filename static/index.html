@@ -657,8 +657,8 @@ function renderJokeCard(joke, collapsed = false) {
                 <button class="joke-action-btn" onclick="copyJoke(this)" data-text="${joke.text.replace(/"/g, '&quot;')}">
                     📋 Копировать
                 </button>
-                <button class="joke-action-btn" onclick="shareJoke('${joke.text.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')">
-                    📤 Поделиться
+                <button class="joke-action-btn" onclick="speakJoke(this)" data-text="${joke.text.replace(/"/g, '&quot;')}">
+                    🔊 Озвучить
                 </button>
             </div>
         </div>
@@ -690,6 +690,61 @@ async function toggleFavorite(id, btn) {
 function copyJoke(btn) {
     const text = btn.dataset.text;
     navigator.clipboard.writeText(text).then(() => showToast('Анекдот скопирован! 📋'));
+}
+
+// Global audio player
+let currentAudio = null;
+
+async function speakJoke(btn) {
+    const text = btn.dataset.text;
+    if (!text) return;
+
+    // Stop if already playing
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+        btn.innerHTML = '🔊 Озвучить';
+        return;
+    }
+
+    btn.innerHTML = '⏳ Загрузка...';
+
+    try {
+        const res = await fetch(API + '/api/voice/tts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text: text})
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            showToast('Ошибка TTS: ' + data.error);
+            btn.innerHTML = '🔊 Озвучить';
+            return;
+        }
+
+        if (data.audio_file) {
+            const audio = new Audio(API + data.audio_file);
+            currentAudio = audio;
+            btn.innerHTML = '⏹ Стоп';
+
+            audio.onended = () => {
+                currentAudio = null;
+                btn.innerHTML = '🔊 Озвучить';
+            };
+            audio.onerror = () => {
+                currentAudio = null;
+                btn.innerHTML = '🔊 Озвучить';
+                showToast('Ошибка воспроизведения');
+            };
+
+            audio.play();
+            showToast('🔊 Воспроизвожу...');
+        }
+    } catch(e) {
+        btn.innerHTML = '🔊 Озвучить';
+        showToast('Ошибка: ' + e.message);
+    }
 }
 
 function shareJoke(text) {

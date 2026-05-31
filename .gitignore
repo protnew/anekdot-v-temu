@@ -21,10 +21,13 @@ env/
 Thumbs.db
 desktop.ini
 
-# Data (database files — too large for git, or sensitive)
+# Data (runtime, too large, or generated)
 data/jokes.db
 data/favorites.json
 data/history.json
+data/tts/
+data/parsed_extra.json
+data/jokes_db_backup_*.json
 
 # Environment
 .env
