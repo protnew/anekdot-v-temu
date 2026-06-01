@@ -37,7 +37,7 @@ def main():
     
     # 1. Бэкенд (всегда нужен)
     print("1️⃣ Бэкенд (FastAPI)")
-    start_process("backend", [PYTHON, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"])
+    start_process("backend", [PYTHON, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", os.environ.get("PORT", "8000")])
     time.sleep(2)
     
     if mode in ["full", "voice"]:

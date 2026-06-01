@@ -4,8 +4,8 @@ title Anekdot v Temu
 
 echo.
 echo ========================================
-echo    ANEKDOT V TEMU v3.3
-echo    8611 anekdotov, 21 kategoriya
+echo    ANEKDOT V TEMU v3.2
+echo    81000+ anekdotov, 21 kategoriya
 echo ========================================
 echo.
 

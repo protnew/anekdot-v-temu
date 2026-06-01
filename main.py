@@ -1,4 +1,4 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.0
+"""Анекдот в тему — AI-powered contextual joke app v3.2
 - TF-IDF semantic search
 - OpenAI LLM joke generation  
 - 506+ jokes, 20 categories
@@ -8,13 +8,12 @@
 """
 import json, os, random, hashlib, time
 from pathlib import Path
-from functools import lru_cache
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional, List
 
-app = FastAPI(title="Анекдот в тему", version="3.1.0")
+app = FastAPI(title="Анекдот в тему", version="3.2.0")
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -153,7 +152,7 @@ class SemanticSearchEngine:
             documents.append(doc)
         self.tfidf_matrix = self.vectorizer.fit_transform(documents)
 
-    def search(self, query: str, top_k: int = 10, min_score: float = 0.01) -> List[dict]:
+    def search(self, query: str, top_k: int = 10, min_score: float = 0.05) -> List[dict]:
         # Lazy rebuild if index is stale
         if self._dirty:
             self._build_index()
@@ -267,6 +266,7 @@ def generate_joke_with_llm(context: str) -> Optional[str]:
 # ============================================================
 # Models
 # ============================================================
+
 class JokeRequest(BaseModel):
     text: str
     count: int = 3
@@ -277,6 +277,8 @@ class JokeRequest(BaseModel):
             raise HTTPException(status_code=400, detail="text не может быть пустым")
         if len(self.text) > 5000:
             raise HTTPException(status_code=400, detail="text слишком длинный (макс 5000 символов)")
+        if self.count < 0:
+            raise HTTPException(status_code=400, detail="count не может быть отрицательным")
         return self.text.strip()
 
 class FavoriteRequest(BaseModel):
@@ -353,17 +355,17 @@ async def contextual_joke(request: JokeRequest):
             elif joke["category"] in matching_cats:
                 joke["semantic_score"] = joke.get("semantic_score", 0) * 1.3
     
-    # Step 4: If semantic search found nothing, fall back to keyword-only
-    if not semantic_results:
+    # Step 4: Filter out zero-score results (no semantic match)
+    semantic_results = [j for j in semantic_results if j.get("semantic_score", 0) > 0.01]
+    
+    # Step 5: If semantic search found nothing, fall back to keyword-only
+    if not semantic_results and matching_cats:
         all_jokes = get_all_jokes()
-        if matching_cats:
-            pool = [j for j in all_jokes if j["category"] in matching_cats]
-        else:
-            pool = all_jokes
+        pool = [j for j in all_jokes if j["category"] in matching_cats]
         pool_sorted = sorted(pool, key=lambda x: x.get("rating", 0), reverse=True)
         semantic_results = pool_sorted[:request.count]
         for j in semantic_results:
-            j["semantic_score"] = 0.0
+            j["semantic_score"] = 0.3  # keyword fallback score
     
     # Sort by combined score
     semantic_results.sort(key=lambda x: x.get("semantic_score", 0), reverse=True)
@@ -864,8 +866,10 @@ async def speech_to_text(request: dict):
 async def text_to_speech(request: dict):
     """Text-to-speech: converts joke text to MP3 audio via gTTS (Google TTS, free)."""
     text = request.get("text", "")
-    if not text:
-        return {"error": "text is required"}
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="text is required")
+    if len(text) > 5000:
+        raise HTTPException(status_code=400, detail="text слишком длинный (макс 5000 символов)")
     
     try:
         from gtts import gTTS
@@ -945,7 +949,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.1.0"
+        "version": "3.2.0"
     }
 
 if __name__ == "__main__":

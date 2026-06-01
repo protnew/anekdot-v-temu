@@ -161,7 +161,7 @@ def cmd_category(msg):
     if not cat:
         bot.reply_to(msg, "Укажи категорию: /cat работа\nСмотри /categories")
         return
-    data = api(f"/api/jokes?category={cat}&limit=3")
+    data = api(f"/api/jokes?category={cat}&count=3")
     if data and data.get("jokes"):
         for j in data["jokes"]:
             bot.send_message(msg.chat.id, format_joke(j))
