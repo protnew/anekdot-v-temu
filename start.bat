@@ -5,7 +5,7 @@ title Anekdot v Temu
 echo.
 echo ========================================
 echo    ANEKDOT V TEMU v3.2
-echo    81000+ anekdotov, 21 kategoriya
+echo    112000+ anekdotov, 33 kategorii, 21 kategoriya
 echo ========================================
 echo.
 

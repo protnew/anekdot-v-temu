@@ -760,9 +760,14 @@ async def analytics_stats():
 # ============================================================
 
 @app.get("/api/jokes/en")
-async def english_jokes(count: int = Query(5, ge=1, le=15)):
-    """Get English-language jokes."""
-    return {"jokes": random.sample(EN_JOKES, min(count, len(EN_JOKES))), "total": len(EN_JOKES)}
+async def english_jokes(count: int = Query(5, ge=1, le=50)):
+    """Get English-language jokes from database (en_* categories)."""
+    all_jokes = get_all_jokes()
+    en = [j for j in all_jokes if j.get("category", "").startswith("en_")]
+    if not en:
+        en = EN_JOKES  # fallback to hardcoded
+    selected = random.sample(en, min(count, len(en)))
+    return {"jokes": selected, "total": len(en)}
 
 # ============================================================
 # #34: PWA Support
@@ -949,7 +954,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.2.0"
+        "version": "3.2.1"
     }
 
 if __name__ == "__main__":
