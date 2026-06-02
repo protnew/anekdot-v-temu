@@ -210,6 +210,16 @@ KEYWORD_MAP = {
     "магазины": ["магазин", "покуп", "касс", "скидк", "акция", "ценник", "прайс", "чек", "товар", "супермаркет", "молл", "бутик"],
     "дети": ["ребёнок", "ребенок", "детский", "детсад", "школьник", "младенец", "малыш", "подросток", "воспитател", "няня", "урок"],
     "реклама": ["реклам", "маркетинг", "бренд", "промо", "таргет", "баннер", "спам", "инфлюенсер", "блогер", "подпис"],
+    # Multilingual keywords
+    "es_trabajo": ['trabajo', 'jefe', 'oficina', 'empleado', 'entrevista', 'sueldo'],
+    "de_arbeit": ['arbeit', 'chef', 'buro', 'kollege', 'gehalt', 'meeting'],
+    "fr_travail": ['travail', 'patron', 'bureau', 'collegue', 'salaire', 'reunion'],
+    "pt_trabalho": ['trabalho', 'chefe', 'escritorio', 'entrevista', 'salario'],
+    "zh_misc": ['gongzuo', 'laoban', 'tongshi', 'mianshi', 'gongzi', 'jiaban', '996'],
+    "ja_work": ['shigoto', 'joushi', 'zangyou', 'kyuuryou', 'kaigi', 'salaryman'],
+    "ar_misc": ['amal', 'mudir', 'muwazzaf', 'ratib', 'ijtima'],
+    "hi_work": ['kaam', 'boss', 'naukri', 'salary', 'office', 'interview'],
+
 }
 
 def find_matching_categories(text: str) -> List[str]:
