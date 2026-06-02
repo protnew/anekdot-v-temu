@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional, List
 
-app = FastAPI(title="Анекдот в тему", version="3.2.0")
+app = FastAPI(title="Анекдот в тему", version="3.5.0")
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -954,11 +954,11 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.2.1"
+        "version": "3.5.0"
     }
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"Запуск Анекдот в тему v3.1 на http://localhost:{port}")
+    print(f"Запуск Анекдот в тему v3.5 на http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
