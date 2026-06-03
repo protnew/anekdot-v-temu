@@ -40,3 +40,4 @@ data/jokes_db_backup_*.json
 .pytest_cache/
 .coverage
 htmlcov/
+

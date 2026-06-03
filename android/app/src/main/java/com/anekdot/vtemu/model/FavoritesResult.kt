@@ -1,0 +1,9 @@
+package com.anekdot.vtemu.model
+
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
+
+@JsonClass(generateAdapter = true)
+data class FavoritesResult(
+    @Json(name = "jokes") val jokes: List<Joke> = emptyList()
+)

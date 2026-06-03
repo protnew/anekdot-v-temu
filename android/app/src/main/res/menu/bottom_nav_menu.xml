@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/randomFragment"
+        android:icon="@drawable/ic_random"
+        android:title="@string/tab_random" />
+    <item
+        android:id="@+id/searchFragment"
+        android:icon="@drawable/ic_search"
+        android:title="@string/tab_search" />
+    <item
+        android:id="@+id/categoriesFragment"
+        android:icon="@drawable/ic_category"
+        android:title="@string/tab_categories" />
+    <item
+        android:id="@+id/favoritesFragment"
+        android:icon="@drawable/ic_favorite"
+        android:title="@string/tab_favorites" />
+</menu>
