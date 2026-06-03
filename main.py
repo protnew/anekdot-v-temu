@@ -1,7 +1,7 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.5.1
+"""Анекдот в тему — AI-powered contextual joke app v3.6.0
 - TF-IDF semantic search
 - OpenAI LLM joke generation  
-- 112K+ jokes, 41 categories, 10 languages
+- 200K jokes, 132 categories, 10 languages
 - SQLite storage
 - User CRUD, analytics, social, personalization
 - PWA, multi-language, moderation
@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from moderation import ProfanityFilter, SpamDetector, ContentModerator
 
-app = FastAPI(title="Анекдот в тему", version="3.5.0")
+app = FastAPI(title="Анекдот в тему", version="3.6.0")
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -211,16 +211,94 @@ KEYWORD_MAP = {
     "магазины": ["магазин", "покуп", "касс", "скидк", "акция", "ценник", "прайс", "чек", "товар", "супермаркет", "молл", "бутик"],
     "дети": ["ребёнок", "ребенок", "детский", "детсад", "школьник", "младенец", "малыш", "подросток", "воспитател", "няня", "урок"],
     "реклама": ["реклам", "маркетинг", "бренд", "промо", "таргет", "баннер", "спам", "инфлюенсер", "блогер", "подпис"],
-    # Multilingual keywords
-    "es_trabajo": ['trabajo', 'jefe', 'oficina', 'empleado', 'entrevista', 'sueldo'],
-    "de_arbeit": ['arbeit', 'chef', 'buro', 'kollege', 'gehalt', 'meeting'],
-    "fr_travail": ['travail', 'patron', 'bureau', 'collegue', 'salaire', 'reunion'],
-    "pt_trabalho": ['trabalho', 'chefe', 'escritorio', 'entrevista', 'salario'],
-    "zh_各种": ['gongzuo', 'laoban', 'tongshi', 'mianshi', 'gongzi', 'jiaban', '996'],
-    "ja_仕事": ['shigoto', 'joushi', 'zangyou', 'kyuuryou', 'kaigi', 'salaryman'],
-    "ar_متنوعة": ['amal', 'mudir', 'muwazzaf', 'ratib', 'ijtima'],
-    "hi_काम": ['kaam', 'boss', 'naukri', 'salary', 'office', 'interview'],
-
+    # Multilingual keywords - Spanish
+    "es_varios": ["espanol", "chiste", "broma", "humor", "gracioso", "divertido"],
+    "es_familia": ["familia", "madre", "padre", "hijo", "hija", "esposa", "marido", "abuela"],
+    "es_trabajo": ["trabajo", "jefe", "oficina", "empleado", "entrevista", "sueldo", "empresa", "compañero"],
+    "es_comida": ["comida", "restaurante", "cocina", "cocinero", "receta", "almuerzo", "cena", "desayuno"],
+    "es_tecnologia": ["tecnologia", "programador", "ordenador", "codigo", "internet", "app", "software"],
+    "es_animales": ["animal", "perro", "gato", "mascota", "veterinario", "pájaro", "pez"],
+    "es_relaciones": ["amor", "novio", "novia", "cita", "pareja", "relacion", "corazon"],
+    "es_salud": ["salud", "doctor", "hospital", "enfermedad", "medicina", "dieta", "ejercicio"],
+    "es_ninos": ["niño", "escuela", "maestro", "estudiante", "deberes", "colegio"],
+    "es_dinero": ["dinero", "banco", "credito", "ahorro", "inversion", "impuesto"],
+    # German
+    "de_verschiedenes": ["witz", "humor", "lustig", "spass", "deutsch"],
+    "de_familie": ["familie", "mutter", "vater", "kind", "frau", "mann", "oma"],
+    "de_arbeit": ["arbeit", "chef", "büro", "kollege", "gehalt", "meeting", "firma", "bewerbung"],
+    "de_essen": ["essen", "restaurant", "küche", "koch", "rezept", "mittag", "abendessen", "brot"],
+    "de_technologie": ["technologie", "programmierer", "computer", "code", "internet", "software"],
+    "de_tiere": ["tier", "hund", "katze", "haustier", "vogel", "fisch"],
+    "de_beziehungen": ["liebe", "beziehung", "freund", "freundin", "date", "partner"],
+    "de_gesundheit": ["gesundheit", "arzt", "krankenhaus", "krankheit", "medizin", "diät", "sport"],
+    "de_kinder": ["kind", "schule", "lehrer", "schüler", "hausaufgabe", "unterricht"],
+    "de_geld": ["geld", "bank", "kredit", "sparen", "investition", "steuer", "gehalt"],
+    # French
+    "fr_divers": ["blague", "humour", "drôle", "français"],
+    "fr_famille": ["famille", "mère", "père", "enfant", "femme", "mari", "grand-mère"],
+    "fr_travail": ["travail", "patron", "bureau", "collègue", "salaire", "réunion", "entreprise"],
+    "fr_cuisine": ["cuisine", "restaurant", "chef", "recette", "déjeuner", "dîner", "fromage", "vin"],
+    "fr_technologie": ["technologie", "programmeur", "ordinateur", "code", "internet", "logiciel"],
+    "fr_animaux": ["animal", "chien", "chat", "oiseau", "poisson"],
+    "fr_relations": ["amour", "copain", "copine", "rendez-vous", "couple", "relation"],
+    "fr_sante": ["santé", "médecin", "hôpital", "maladie", "médicament", "régime"],
+    "fr_enfants": ["enfant", "école", "professeur", "élève", "devoir", "classe"],
+    "fr_argent": ["argent", "banque", "crédit", "épargne", "investissement", "impôt"],
+    # Portuguese
+    "pt_variado": ["piada", "humor", "engraçado", "brasileiro"],
+    "pt_familia": ["família", "mãe", "pai", "filho", "esposa", "marido"],
+    "pt_trabalho": ["trabalho", "chefe", "escritório", "entrevista", "salário", "empresa"],
+    "pt_comida": ["comida", "restaurante", "cozinha", "cozinheiro", "almoço", "jantar", "feijoada"],
+    "pt_tecnologia": ["tecnologia", "programador", "computador", "código", "internet"],
+    "pt_animais": ["animal", "cachorro", "gato", "papagaio", "peixe"],
+    "pt_relacionamento": ["amor", "namorado", "namorada", "casal", "relacionamento"],
+    "pt_saude": ["saúde", "médico", "hospital", "doença", "remédio", "dieta"],
+    "pt_crianca": ["criança", "escola", "professor", "aluno", "lição"],
+    "pt_dinheiro": ["dinheiro", "banco", "crédito", "economia", "investimento"],
+    # Chinese
+    "zh_misc": ["笑话", "幽默", "搞笑", "段子"],
+    "zh_family": ["家庭", "妈妈", "爸爸", "孩子", "老婆", "老公"],
+    "zh_work": ["工作", "老板", "同事", "加班", "面试", "工资", "996"],
+    "zh_food": ["美食", "餐厅", "做饭", "厨师", "午餐", "晚餐", "火锅"],
+    "zh_tech": ["程序员", "代码", "电脑", "互联网", "软件", "bug"],
+    "zh_animals": ["动物", "狗", "猫", "宠物", "鱼"],
+    "zh_life": ["生活", "日常", "人生"],
+    "zh_health": ["健康", "医生", "医院", "锻炼", "减肥"],
+    "zh_school": ["学校", "老师", "学生", "考试", "作业"],
+    "zh_money": ["钱", "银行", "工资", "投资", "信用卡"],
+    # Japanese
+    "ja_misc": ["冗談", "ユーモア", "面白い", "笑"],
+    "ja_family": ["家族", "お母さん", "お父さん", "子供", "妻", "夫"],
+    "ja_work": ["仕事", "上司", "同僚", "残業", "面接", "給料", "サラリーマン"],
+    "ja_food": ["食べ物", "レストラン", "料理", "昼ごはん", "晩ごはん", "ラーメン"],
+    "ja_tech": ["プログラマー", "コード", "パソコン", "インターネット"],
+    "ja_animals": ["動物", "犬", "猫", "ペット", "魚"],
+    "ja_life": ["生活", "日常", "人生"],
+    "ja_health": ["健康", "医者", "病院", "ダイエット", "運動"],
+    "ja_school": ["学校", "先生", "学生", "宿題", "試験"],
+    "ja_money": ["お金", "銀行", "給料", "投資", "貯金"],
+    # Arabic
+    "ar_misc": ["نكتة", "فكاهة", "مضحك", "سخرية"],
+    "ar_family": ["عائلة", "أم", "أب", "طفل", "زوجة", "زوج"],
+    "ar_work": ["عمل", "مدير", "موظف", "راتب", "مقابلة", "شركة"],
+    "ar_food": ["طعام", "مطعم", "طبخ", "غداء", "عشاء"],
+    "ar_tech": ["تكنولوجيا", "مبرمج", "حاسوب", "إنترنت", "كود"],
+    "ar_animals": ["حيوان", "كلب", "قطة", "حیوان"],
+    "ar_life": ["حياة", "يومي", "عيش"],
+    "ar_health": ["صحة", "طبيب", "مستشفى", "مرض", "دواء"],
+    "ar_school": ["مدرسة", "معلم", "طالب", "امتحان", "واجب"],
+    "ar_money": ["مال", "بنك", "راتب", "استثمار", "قرض"],
+    # Hindi
+    "hi_misc": ["chutkula", "mazak", "hasi", "joke", "funny"],
+    "hi_family": ["parivar", "maa", "papa", "baccha", "patni", "pati"],
+    "hi_work": ["kaam", "boss", "naukri", "salary", "office", "interview", "company"],
+    "hi_food": ["khana", "restaurant", "cooking", "lunch", "dinner", "biryani"],
+    "hi_tech": ["programmer", "code", "computer", "internet", "software"],
+    "hi_animals": ["janwar", "kutta", "billi", "pet"],
+    "hi_life": ["zindagi", "daily", "life"],
+    "hi_health": ["sehat", "doctor", "hospital", "bimari", "dawai"],
+    "hi_school": ["school", "teacher", "student", "exam", "homework"],
+    "hi_money": ["paisa", "bank", "salary", "investment", "loan"],
 }
 
 def find_matching_categories(text: str) -> List[str]:
@@ -970,7 +1048,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.5.1"
+        "version": "3.6.0"
     }
 
 # ============================================================
