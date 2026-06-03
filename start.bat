@@ -4,8 +4,8 @@ title Anekdot v Temu
 
 echo.
 echo ========================================
-echo    ANEKDOT V TEMU v3.2
-echo    112000+ anekdotov, 33 kategorii, 21 kategoriya
+echo    ANEKDOT V TEMU v3.5
+echo    112000+ anekdotov, 41 kategoriya, 10 yazikov
 echo ========================================
 echo.
 
@@ -46,7 +46,7 @@ echo.
 echo Vyberi rezhim:
 echo   [1] Veb-interfeys - otkroy http://localhost:8000
 echo   [2] Golos (base) - govorish v mikrofon, shutki cherez 20 sek
-echo   [3] Golos (small) - luchshe kachestvo, dolgo gryzit model
+echo   [3] Golos (small) - luchshe kachestvo, dolgo gryzet model
 echo   [4] Polnyy - golos + shutki poverh vseh okon
 echo   [5] Vyhod
 echo.
