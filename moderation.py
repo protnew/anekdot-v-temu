@@ -118,8 +118,7 @@ _PROFANITY_STEMS: frozenset = frozenset({
     "дристать", "дрищу",
     "гавно",
 
-    # член / хуем
-    "член", "члены", "членом",  # context-sensitive, но для базы оставим
+    # член / хуем — убрано: «член комиссии» = FP, контекстно-зависимое
 
     # курва
     "курва",
@@ -253,7 +252,7 @@ class ProfanityFilter:
                     for i in range(min_len):
                         if norm[i] == stem[i]:
                             common += 1
-                    if common / max(len(norm), len(stem)) >= 0.65:
+                    if common / max(len(norm), len(stem)) >= 0.70:
                         found.append(word)
                         break
         return found
@@ -299,7 +298,7 @@ class ProfanityFilter:
                     for i in range(min_len):
                         if norm[i] == stem[i]:
                             common += 1
-                    if common / max(len(norm), len(stem)) >= 0.65:
+                    if common / max(len(norm), len(stem)) >= 0.70:
                         return '***'
             return word
 

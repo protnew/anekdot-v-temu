@@ -1,17 +1,18 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.2
+"""Анекдот в тему — AI-powered contextual joke app v3.5.1
 - TF-IDF semantic search
 - OpenAI LLM joke generation  
-- 506+ jokes, 20 categories
+- 112K+ jokes, 41 categories, 10 languages
 - SQLite storage
 - User CRUD, analytics, social, personalization
-- PWA, multi-language
+- PWA, multi-language, moderation
 """
 import json, os, random, hashlib, time
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
+from moderation import ProfanityFilter, SpamDetector, ContentModerator
 
 app = FastAPI(title="Анекдот в тему", version="3.5.0")
 
@@ -969,8 +970,50 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.5.0"
+        "version": "3.5.1"
     }
+
+# ============================================================
+# Landing page
+# ============================================================
+@app.get("/landing", response_class=HTMLResponse)
+async def landing():
+    landing_path = BASE_DIR / "static" / "landing.html"
+    if landing_path.exists():
+        return landing_path.read_text(encoding="utf-8")
+    raise HTTPException(404, "Landing not found")
+
+# ============================================================
+# Moderation API
+# ============================================================
+_moderator = ContentModerator()
+
+class ModerateRequest(BaseModel):
+    text: str
+
+@app.post("/api/moderate")
+async def moderate_text(request: ModerateRequest):
+    """Проверить текст через ContentModerator (profanity + spam)."""
+    result = _moderator.moderate(request.text)
+    return {
+        "approved": result["approved"],
+        "score": result["score"],
+        "reasons": result["reasons"],
+        "clean_text": result["clean_text"],
+    }
+
+@app.post("/api/moderate/profanity")
+async def check_profanity(request: ModerateRequest):
+    """Проверить только мат (ProfanityFilter)."""
+    pf = ProfanityFilter()
+    return pf.check(request.text)
+
+@app.post("/api/moderate/spam")
+async def check_spam(request: ModerateRequest):
+    """Проверить только спам (SpamDetector)."""
+    sd = SpamDetector()
+    result = sd.is_spam(request.text)
+    return {"is_spam": result, "text": request.text}
 
 if __name__ == "__main__":
     import uvicorn
