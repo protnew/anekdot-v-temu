@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анекдот в Тему — 112 000+ AI шуток по контексту разговора</title>
+    <meta name="description" content="Анекдот в Тему — приложение с 112 000+ анекдотов на 10 языках. Искусственный интеллект подбирает идеальную шутку по контексту вашего разговора за менее чем 1 секунду. 41 категория шуток.">
+    <meta name="keywords" content="анекдоты, шутки, AI, искусственный интеллект, анекдот в тему, приложение, контекст, подбор шуток">
+    <meta name="author" content="Анекдот в Тему">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://anekdot.app/">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Анекдот в Тему — 112 000+ AI шуток по контексту">
+    <meta property="og:description" content="Искусственный интеллект подбирает идеальную шутку по контексту вашего разговора. 112K+ анекдотов, 41 категория, 10 языков.">
+    <meta property="og:url" content="https://anekdot.app/">
+    <meta property="og:site_name" content="Анекдот в Тему">
+    <meta property="og:locale" content="ru_RU">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Анекдот в Тему — AI шутки по контексту">
+    <meta name="twitter:description" content="112 000+ анекдотов. AI подбирает шутку по контексту разговора за <1 сек.">
+
+    <!-- Schema.org JSON-LD -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Анекдот в Тему",
+        "description": "Приложение с 112 000+ анекдотами. Искусственный интеллект подбирает шутку по контексту разговора за менее чем 1 секунду.",
+        "url": "https://anekdot.app/",
+        "applicationCategory": "EntertainmentApplication",
+        "operatingSystem": "Android",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "RUB"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "2500",
+            "bestRating": "5"
+        },
+        "inLanguage": ["ru", "en", "de", "fr", "es", "pt", "it", "nl", "pl", "cs"]
+    }
+    </script>
+
+    <style>
+        /* ========== RESET & VARIABLES ========== */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0f0f1a;
+            --bg2: #12122a;
+            --card: #1a1a2e;
+            --card-hover: #222245;
+            --accent: #e94560;
+            --accent-glow: rgba(233, 69, 96, 0.3);
+            --accent2: #0f3460;
+            --accent3: #533483;
+            --text: #eaeaea;
+            --text2: #9999aa;
+            --text3: #666680;
+            --success: #4caf50;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --shadow-accent: 0 4px 24px rgba(233, 69, 96, 0.25);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ========== SCROLL ANIMATIONS ========== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ========== NAVIGATION ========== */
+        .navbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            background: rgba(15, 15, 26, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: var(--transition);
+        }
+        .navbar.scrolled {
+            background: rgba(15, 15, 26, 0.95);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+        }
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-logo {
+            font-size: 22px;
+            font-weight: 700;
+            text-decoration: none;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-logo span { color: var(--accent); }
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+        }
+        .nav-links a {
+            color: var(--text2);
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            transition: var(--transition);
+            position: relative;
+        }
+        .nav-links a:hover { color: var(--accent); }
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px; left: 0;
+            width: 0; height: 2px;
+            background: var(--accent);
+            transition: var(--transition);
+        }
+        .nav-links a:hover::after { width: 100%; }
+        .nav-burger {
+            display: none;
+            background: none; border: none;
+            color: var(--text);
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        /* ========== HERO ========== */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 24px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(233, 69, 96, 0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(83, 52, 131, 0.08) 0%, transparent 50%);
+            animation: heroGlow 15s ease-in-out infinite alternate;
+        }
+        @keyframes heroGlow {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-3%, -3%) rotate(3deg); }
+        }
+        .hero-content { position: relative; z-index: 1; max-width: 800px; }
+        .hero-emoji {
+            font-size: 64px;
+            margin-bottom: 20px;
+            animation: bounce 2s ease-in-out infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+        .hero h1 {
+            font-size: clamp(2.2rem, 6vw, 3.8rem);
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--text), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.35rem);
+            color: var(--text2);
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .hero-subtitle strong { color: var(--accent); font-weight: 600; }
+        .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+        /* ========== BUTTONS ========== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 36px;
+            border-radius: 50px;
+            font-size: 17px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #c73652);
+            color: #fff;
+            box-shadow: var(--shadow-accent);
+        }
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(233, 69, 96, 0.4);
+        }
+        .btn-secondary {
+            background: var(--card);
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-secondary:hover {
+            background: var(--card-hover);
+            transform: translateY(-3px);
+        }
+        .btn:active { transform: translateY(0) scale(0.98); }
+
+        /* ========== SECTIONS ========== */
+        section {
+            padding: 100px 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .section-tag {
+            display: inline-block;
+            background: rgba(233, 69, 96, 0.12);
+            color: var(--accent);
+            padding: 6px 18px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
+        }
+        .section-title {
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .section-desc {
+            color: var(--text2);
+            font-size: 17px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ========== HOW IT WORKS ========== */
+        .how-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 30px;
+            position: relative;
+        }
+        .how-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 40px 30px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: var(--transition);
+            position: relative;
+        }
+        .how-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow);
+            border-color: rgba(233, 69, 96, 0.15);
+        }
+        .how-icon {
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 20px;
+            background: rgba(233, 69, 96, 0.1);
+        }
+        .how-step {
+            position: absolute;
+            top: -14px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: #fff;
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .how-card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+        .how-card p {
+            color: var(--text2);
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .how-arrow {
+            display: none;
+            position: absolute;
+            right: -18px; top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            color: var(--accent);
+            z-index: 2;
+        }
+
+        /* ========== STATS ========== */
+        .stats-section {
+            background: var(--bg2);
+            max-width: none;
+            padding: 80px 24px;
+            margin: 0;
+        }
+        .stats-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+        }
+        .stat-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 36px 24px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: var(--transition);
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow);
+        }
+        .stat-emoji {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+        .stat-value {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            color: var(--text2);
+            font-size: 15px;
+        }
+
+        /* ========== CATEGORIES ========== */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 14px;
+        }
+        .cat-card {
+            background: var(--card);
+            border-radius: var(--radius-sm);
+            padding: 18px 14px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: var(--transition);
+            cursor: default;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .cat-card:hover {
+            background: var(--card-hover);
+            transform: translateY(-4px);
+            border-color: rgba(233, 69, 96, 0.2);
+        }
+        .cat-emoji { font-size: 28px; }
+        .cat-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .cat-count {
+            font-size: 11px;
+            color: var(--text3);
+        }
+
+        /* ========== TRY SECTION ========== */
+        .try-section { position: relative; }
+        .try-container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 40px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .try-input-group {
+            margin-bottom: 20px;
+        }
+        .try-input-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text2);
+            margin-bottom: 10px;
+        }
+        .try-textarea {
+            width: 100%;
+            min-height: 120px;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: var(--transition);
+            line-height: 1.6;
+        }
+        .try-textarea::placeholder { color: var(--text3); }
+        .try-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
+        }
+        .try-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .try-result {
+            margin-top: 24px;
+            padding: 24px;
+            background: rgba(233, 69, 96, 0.06);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            display: none;
+            animation: fadeSlideIn 0.4s ease;
+        }
+        .try-result.show { display: block; }
+        .try-result-text {
+            font-size: 16px;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+        .try-result-meta {
+            font-size: 13px;
+            color: var(--text3);
+        }
+        .try-loading {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+            color: var(--text2);
+            font-size: 15px;
+        }
+        .try-loading.show { display: block; }
+        .try-loading .spinner {
+            display: inline-block;
+            width: 20px; height: 20px;
+            border: 2px solid var(--text3);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ========== DOWNLOAD ========== */
+        .download-section {
+            text-align: center;
+            position: relative;
+        }
+        .download-card {
+            background: linear-gradient(135deg, var(--card), var(--bg2));
+            border-radius: 24px;
+            padding: 60px 40px;
+            border: 1px solid rgba(233, 69, 96, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .download-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at 50% 0%, rgba(233, 69, 96, 0.08), transparent 70%);
+        }
+        .download-card > * { position: relative; z-index: 1; }
+        .download-card h2 {
+            font-size: clamp(1.8rem, 4vw, 2.4rem);
+            margin-bottom: 16px;
+        }
+        .download-card p {
+            color: var(--text2);
+            font-size: 17px;
+            margin-bottom: 32px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .download-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 32px;
+            background: var(--card);
+            color: var(--text);
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .btn-download:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow);
+            border-color: rgba(233, 69, 96, 0.2);
+        }
+        .btn-download .dl-icon { font-size: 28px; }
+        .btn-download .dl-label { font-size: 12px; color: var(--text2); }
+        .btn-download .dl-store { font-size: 17px; }
+
+        /* ========== RANDOM JOKE DISPLAY ========== */
+        .random-joke {
+            margin-top: 32px;
+            padding: 24px 28px;
+            background: var(--card);
+            border-radius: var(--radius);
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: left;
+            display: none;
+            border: 1px solid rgba(233, 69, 96, 0.1);
+            animation: fadeSlideIn 0.4s ease;
+        }
+        .random-joke.show { display: block; }
+        .random-joke-label {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .random-joke-text {
+            font-size: 17px;
+            line-height: 1.7;
+        }
+        .random-joke-cat {
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--text3);
+        }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ========== FOOTER ========== */
+        .footer {
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 40px 24px;
+            text-align: center;
+        }
+        .footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .footer-copy {
+            color: var(--text3);
+            font-size: 14px;
+        }
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+        .footer-links a {
+            color: var(--text2);
+            text-decoration: none;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+        .footer-links a:hover { color: var(--accent); }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .nav-burger { display: block; }
+            .nav-links.open {
+                display: flex;
+                flex-direction: column;
+                position: absolute;
+                top: 100%; left: 0; right: 0;
+                background: rgba(15, 15, 26, 0.98);
+                padding: 20px 24px;
+                gap: 16px;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+            }
+            .hero { padding: 100px 20px 60px; min-height: auto; }
+            .hero-emoji { font-size: 48px; }
+            section { padding: 60px 16px; }
+            .try-container { padding: 24px; }
+            .download-card { padding: 40px 24px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .categories-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+            .footer-inner { flex-direction: column; text-align: center; }
+        }
+
+        @media (min-width: 769px) {
+            .how-arrow { display: block; }
+        }
+
+        /* ========== SCROLL TO TOP ========== */
+        .scroll-top {
+            position: fixed;
+            bottom: 30px; right: 30px;
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: var(--transition);
+            z-index: 999;
+            box-shadow: var(--shadow-accent);
+        }
+        .scroll-top.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .scroll-top:hover { transform: translateY(-3px); }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">😂 Анекдот <span>в Тему</span></a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#how">Как работает</a></li>
+                <li><a href="#stats">Статистика</a></li>
+                <li><a href="#categories">Категории</a></li>
+                <li><a href="#try">Попробовать</a></li>
+                <li><a href="#download">Скачать</a></li>
+            </ul>
+            <button class="nav-burger" id="navBurger" aria-label="Меню">☰</button>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero" id="hero">
+        <div class="hero-content">
+            <div class="hero-emoji">😂</div>
+            <h1>Анекдот в Тему</h1>
+            <p class="hero-subtitle">
+                <strong>112 000+</strong> анекдотов, подобранных искусственным интеллектом по контексту вашего разговора
+            </p>
+            <div class="hero-buttons">
+                <button class="btn btn-primary" id="randomJokeBtn" onclick="loadRandomJoke()">
+                    🎲 Случайный анекдот
+                </button>
+                <a href="#try" class="btn btn-secondary">💬 Попробовать</a>
+            </div>
+            <div class="random-joke" id="randomJoke">
+                <div class="random-joke-label">🎲 Случайный анекдот</div>
+                <div class="random-joke-text" id="randomJokeText"></div>
+                <div class="random-joke-cat" id="randomJokeCat"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="how">
+        <div class="section-header reveal">
+            <div class="section-tag">Принцип работы</div>
+            <h2 class="section-title">Как работает Анекдот в Тему?</h2>
+            <p class="section-desc">Три простых шага — и идеальная шутка уже в вашем разговоре</p>
+        </div>
+        <div class="how-grid">
+            <div class="how-card reveal">
+                <div class="how-step">1</div>
+                <div class="how-icon">🎤</div>
+                <h3>Говорите</h3>
+                <p>Ведите беседу как обычно. Наше приложение слушает контекст разговора в реальном времени.</p>
+                <div class="how-arrow">→</div>
+            </div>
+            <div class="how-card reveal">
+                <div

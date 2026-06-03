@@ -1,0 +1,10 @@
+{
+  "app_id": "YOUR_APP_ID",
+  "endpoints": {
+    "mobile": "index.html",
+    "web": "index.html"
+  },
+  "app_name": "Анекдот в тему",
+  "description": "112K+ анекдотов по контексту",
+  "version": "1.0.0"
+}

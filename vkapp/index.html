@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Анекдот в тему</title>
+<script src="https://unpkg.com/@vkontakte/vk-bridge@^2/dist/index.umd.js"></script>
+<style>
+/* ── Сброс и базовые стили ── */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0f;
+  --card:#16161e;
+  --card-hover:#1e1e2a;
+  --purple:#7B2FF7;
+  --purple-light:#9f5ff5;
+  --text:#e8e8ec;
+  --text-dim:#888;
+  --radius:14px;
+  --shadow:0 4px 24px rgba(123,47,247,.12);
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ── Header ── */
+.header{
+  position:sticky;top:0;z-index:100;
+  background:linear-gradient(135deg,#0e0e18 0%,#16162a 100%);
+  padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid rgba(123,47,247,.2);
+}
+.header-icon{font-size:28px}
+.header-title{font-size:18px;font-weight:700;letter-spacing:.3px}
+.header-sub{font-size:12px;color:var(--text-dim)}
+
+/* ── Контейнер ── */
+.container{padding:16px;max-width:480px;margin:0 auto}
+
+/* ── Секции ── */
+.section{margin-bottom:24px}
+.section-title{
+  font-size:15px;font-weight:600;
+  color:var(--purple-light);
+  margin-bottom:10px;
+  display:flex;align-items:center;gap:6px;
+}
+
+/* ── Карточка шутки ── */
+.joke-card{
+  background:var(--card);
+  border-radius:var(--radius);
+  padding:20px;
+  box-shadow:var(--shadow);
+  border:1px solid rgba(123,47,247,.1);
+  transition:transform .15s;
+}
+.joke-card:active{transform:scale(.985)}
+.joke-text{
+  font-size:15px;line-height:1.55;
+  white-space:pre-wrap;
+  margin-bottom:14px;
+}
+.joke-meta{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--text-dim);
+}
+.joke-category{
+  background:rgba(123,47,247,.15);
+  color:var(--purple-light);
+  padding:3px 10px;border-radius:20px;
+  font-size:11px;font-weight:500;
+}
+.joke-rating{font-weight:600}
+
+/* ── Кнопки действий ── */
+.actions{
+  display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;
+}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 16px;border-radius:22px;
+  font-size:13px;font-weight:600;
+  border:none;cursor:pointer;
+  transition:all .15s;
+}
+.btn:active{transform:scale(.95)}
+.btn-primary{
+  background:var(--purple);color:#fff;
+}
+.btn-primary:hover{background:var(--purple-light)}
+.btn-secondary{
+  background:rgba(123,47,247,.12);color:var(--purple-light);
+}
+.btn-secondary:hover{background:rgba(123,47,247,.22)}
+.btn-danger{
+  background:rgba(220,50,50,.12);color:#e55;
+}
+.btn-danger:hover{background:rgba(220,50,50,.22)}
+.btn-share{
+  background:rgba(0,136,255,.12);color:#4da6ff;
+}
+
+/* ── Поиск ── */
+.search-box{
+  display:flex;gap:8px;
+}
+.search-input{
+  flex:1;
+  background:var(--card);
+  border:1px solid rgba(123,47,247,.2);
+  border-radius:22px;
+  padding:10px 18px;
+  font-size:14px;
+  color:var(--text);
+  outline:none;
+  transition:border-color .2s;
+}
+.search-input::placeholder{color:var(--text-dim)}
+.search-input:focus{border-color:var(--purple)}
+.search-btn{
+  background:var(--purple);
+  color:#fff;border:none;
+  padding:10px 18px;border-radius:22px;
+  font-size:14px;font-weight:600;cursor:pointer;
+}
+
+/* ── Горизонтальный скролл категорий ── */
+.categories-scroll{
+  display:flex;gap:8px;
+  overflow-x:auto;padding-bottom:8px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.categories-scroll::-webkit-scrollbar{display:none}
+.cat-chip{
+  flex-shrink:0;
+  background:var(--card);
+  border:1px solid rgba(123,47,247,.15);
+  padding:8px 16px;border-radius:22px;
+  font-size:13px;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.cat-chip:hover,.cat-chip.active{
+  background:var(--purple);color:#fff;border-color:var(--purple);
+}
+
+/* ── Топ список ── */
+.top-list{display:flex;flex-direction:column;gap:8px}
+.top-item{
+  background:var(--card);
+  border-radius:var(--radius);
+  padding:14px 16px;
+  display:flex;gap:12px;align-items:flex-start;
+  border:1px solid rgba(123,47,247,.08);
+}
+.top-rank{
+  font-size:18px;font-weight:800;
+  color:var(--purple);
+  min-width:28px;text-align:center;
+  line-height:1.3;
+}
+.top-content{flex:1}
+.top-text{font-size:13px;line-height:1.45;margin-bottom:4px}
+.top-score{font-size:11px;color:var(--text-dim)}
+
+/* ── Loading / Empty ── */
+.loader{
+  text-align:center;padding:32px;
+  color:var(--text-dim);font-size:14px;
+}
+.empty{
+  text-align:center;padding:24px;
+  color:var(--text-dim);font-size:13px;
+}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:24px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--purple);color:#fff;
+  padding:10px 22px;border-radius:22px;
+  font-size:13px;font-weight:600;
+  opacity:0;transition:all .3s;z-index:999;
+  pointer-events:none;
+}
+.toast.show{
+  transform:translateX(-50%) translateY(0);
+  opacity:1;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-icon">😂</div>
+  <div>
+    <div class="header-title">Анекдот в тему</div>
+    <div class="header-sub">112K+ анекдотов по контексту</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Случайная шутка -->
+  <div class="section">
+    <div class="section-title">🎲 Случайный анекдот</div>
+    <div id="random-joke">
+      <div class="loader">Загрузка…</div>
+    </div>
+  </div>
+
+  <!-- Поиск -->
+  <div class="section">
+    <div class="section-title">🔍 Поиск по теме</div>
+    <div class="search-box">
+      <input class="search-input" id="search-input" type="text" placeholder="Введите тему…">
+      <button class="search-btn" id="search-btn">Найти</button>
+    </div>
+    <div id="search-result" style="margin-top:12px"></div>
+  </div>
+
+  <!-- Категории -->
+  <div class="section">
+    <div class="section-title">📂 Категории</div>
+    <div class="categories-scroll" id="categories-list">
+      <div class="loader">Загрузка…</div>
+    </div>
+    <div id="category-joke" style="margin-top:12px"></div>
+  </div>
+
+  <!-- Топ -->
+  <div class="section">
+    <div class="section-title">🏆 Топ анекдотов</div>
+    <div id="top-list" class="top-list">
+      <div class="loader">Загрузка…</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── VK Bridge Init ── */
+vkBridge.send('VKWebAppInit');
+
+/* ── Config ── */
+const API_BASE = (function(){
+  // Поддержка передачи через URL-параметр
+  const u = new URLSearchParams(location.search);
+  return u.get('api') || 'http://localhost:8000';
+})();
+
+/* ── Helpers ── */
+function $(id){ return document.getElementById(id) }
+
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+async function api(path, params={}){
+  const url = new URL(API_BASE + path);
+  Object.entries(params).forEach(([k,v])=> url.searchParams.set(k,v));
+  try {
+    const r = await fetch(url);
+    if(!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch(e){
+    console.error('API error', path, e);
+    return null;
+  }
+}
+
+/* ── Рендер карточки шутки ── */
+function renderJoke(data, container){
+  const text = data.text || data.joke || data.content || '😅 Не удалось загрузить';
+  const cat  = data.category || data.tags || '';
+  const rate = data.rating ?? data.score ?? 0;
+  const id   = data.id ?? 0;
+
+  container.innerHTML = `
+    <div class="joke-card">
+      <div class="joke-text">${escHtml(text)}</div>
+      <div class="joke-meta">
+        <span class="joke-category">${escHtml(String(cat))}</span>
+        <span class="joke-rating">⭐ ${rate}</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="loadRandom()">🔀 Ещё</button>
+        <button class="btn btn-secondary" onclick="rateJoke(${id})">⭐ Оценить</button>
+        <button class="btn btn-share" onclick="shareJoke(${id})">📤 Поделиться</button>
+      </div>
+    </div>`;
+}
+
+function escHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ── Случайная шутка ── */
+async function loadRandom(category){
+  const params = {};
+  if(category) params.category = category;
+  const data = await api('/api/joke/random', params);
+  if(!data){
+    $('random-joke').innerHTML = '<div class="empty">⚠️ Сервис недоступен</div>';
+    return;
+  }
+  renderJoke(data, $('random-joke'));
+}
+
+/* ── Оценка ── */
+async function rateJoke(id){
+  try {
+    const r = await fetch(API_BASE + '/api/joke/' + id + '/rate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({score:1})
+    });
+    if(r.ok) showToast('⭐ Спасибо за оценку!');
+    else showToast('⚠️ Ошибка оценки');
+  } catch(e){ showToast('⚠️ Ошибка') }
+}
+
+/* ── Шаринг ── */
+function shareJoke(id){
+  if(typeof vkBridge !== 'undefined'){
+    vkBridge.send('VKWebAppShare', {
+      link: 'https://vk.com/app' + ('__APP_ID__') + '#joke=' + id
+    }).catch(()=>{});
+  }
+  showToast('📤 Делимся!');
+}
+
+/* ── Поиск ── */
+async function doSearch(){
+  const q = $('search-input').value.trim();
+  if(!q) return;
+  $('search-result').innerHTML = '<div class="loader">Ищем…</div>';
+  const data = await api('/api/jokes/context', {q});
+  if(!data || (Array.isArray(data) && data.length === 0)){
+    $('search-result').innerHTML = '<div class="empty">😔 Ничего не найдено</div>';
+    return;
+  }
+  const joke = Array.isArray(data) ? data[0] : data;
+  renderJoke(joke, $('search-result'));
+}
+
+$('search-btn').addEventListener('click', doSearch);
+$('search-input').addEventListener('keydown', e => { if(e.key==='Enter') doSearch() });
+
+/* ── Категории ── */
+async function loadCategories(){
+  const data = await api('/api/categories');
+  const container = $('categories-list');
+  if(!data){
+    container.innerHTML = '<div class="empty">Не удалось загрузить</div>';
+    return;
+  }
+  let cats = Array.isArray(data) ? data : (data.categories || Object.keys(data));
+  container.innerHTML = cats.map(c =>
+    `<div class="cat-chip" onclick="selectCategory(this, '${escHtml(String(c))}')">${escHtml(String(c))}</div>`
+  ).join('');
+}
+
+let activeChip = null;
+async function selectCategory(el, name){
+  document.querySelectorAll('.cat-chip').forEach(c=> c.classList.remove('active'));
+  el.classList.add('active');
+  activeChip = name;
+  $('category-joke').innerHTML = '<div class="loader">Загрузка…</div>';
+  const data = await api('/api/joke/random', {category: name});
+  if(!data){
+    $('category-joke').innerHTML = '<div class="empty">Пусто</div>';
+    return;
+  }
+  renderJoke(data, $('category-joke'));
+}
+
+/* ── Топ ── */
+async function loadTop(){
+  const data = await api('/api/jokes/social/top', {limit:5});
+  const container = $('top-list');
+  if(!data || !Array.isArray(data) || data.length === 0){
+    container.innerHTML = '<div class="empty">Пока пусто</div>';
+    return;
+  }
+  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+  container.innerHTML = data.slice(0,5).map((j,i) => {
+    const text = (j.text || j.joke || '').slice(0, 160);
+    const rate = j.rating ?? j.score ?? 0;
+    return `
+      <div class="top-item">
+        <div class="top-rank">${medals[i]}</div>
+        <div class="top-content">
+          <div class="top-text">${escHtml(text)}</div>
+          <div class="top-score">⭐ ${rate}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ── Init ── */
+loadRandom();
+loadCategories();
+loadTop();
+</script>
+</body>
+</html>
