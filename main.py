@@ -215,10 +215,10 @@ KEYWORD_MAP = {
     "de_arbeit": ['arbeit', 'chef', 'buro', 'kollege', 'gehalt', 'meeting'],
     "fr_travail": ['travail', 'patron', 'bureau', 'collegue', 'salaire', 'reunion'],
     "pt_trabalho": ['trabalho', 'chefe', 'escritorio', 'entrevista', 'salario'],
-    "zh_misc": ['gongzuo', 'laoban', 'tongshi', 'mianshi', 'gongzi', 'jiaban', '996'],
-    "ja_work": ['shigoto', 'joushi', 'zangyou', 'kyuuryou', 'kaigi', 'salaryman'],
-    "ar_misc": ['amal', 'mudir', 'muwazzaf', 'ratib', 'ijtima'],
-    "hi_work": ['kaam', 'boss', 'naukri', 'salary', 'office', 'interview'],
+    "zh_各种": ['gongzuo', 'laoban', 'tongshi', 'mianshi', 'gongzi', 'jiaban', '996'],
+    "ja_仕事": ['shigoto', 'joushi', 'zangyou', 'kyuuryou', 'kaigi', 'salaryman'],
+    "ar_متنوعة": ['amal', 'mudir', 'muwazzaf', 'ratib', 'ijtima'],
+    "hi_काम": ['kaam', 'boss', 'naukri', 'salary', 'office', 'interview'],
 
 }
 

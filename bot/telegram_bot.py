@@ -262,6 +262,6 @@ if __name__ == "__main__":
             types.BotCommand("top", "🏆 Топ анекдотов"),
             types.BotCommand("stats", "📊 Статистика"),
         ])
-    except:
+    except Exception:
         pass
     bot.infinity_polling()
