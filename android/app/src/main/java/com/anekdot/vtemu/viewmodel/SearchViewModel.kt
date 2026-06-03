@@ -53,7 +53,7 @@ class SearchViewModel(
 
             if (_isContextMode.value == true) {
                 // Context search mode
-                when (val result = repository.contextSearch(query)) {
+                when (val result = repository.contextJoke(query)) {
                     is ApiResponse.Success -> {
                         _results.value = result.data.jokes
                         _matchedCategories.value = result.data.matchedCategories
@@ -87,7 +87,7 @@ class SearchViewModel(
 
             when (val result = repository.generateJoke(text)) {
                 is ApiResponse.Success -> {
-                    _generatedJoke.value = result.data
+                    _generatedJoke.value = result.data.joke
                 }
                 is ApiResponse.Error -> {
                     _error.value = result.message

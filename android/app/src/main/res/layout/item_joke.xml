@@ -49,7 +49,74 @@
             android:textSize="14sp"
             android:lineSpacingExtra="2dp"
             android:maxLines="8"
-            android:ellipsize="end" />
+            android:ellipsize="end"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Badges row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="6dp">
+
+            <TextView
+                android:id="@+id/badgeSemantic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/accent_purple_light"
+                android:textSize="11sp"
+                android:visibility="gone"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/badgeGenerated"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🤖 AI"
+                android:textColor="@color/accent_purple_light"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Action buttons row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <ImageButton
+                android:id="@+id/btn_fav"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_favorite"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="В избранное"
+                android:layout_marginEnd="4dp"
+                android:scaleType="centerInside" />
+
+            <ImageButton
+                android:id="@+id/btn_copy"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_copy"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Копировать"
+                android:layout_marginEnd="4dp"
+                android:scaleType="centerInside" />
+
+            <ImageButton
+                android:id="@+id/btn_tts_item"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_volume"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Озвучить"
+                android:scaleType="centerInside" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

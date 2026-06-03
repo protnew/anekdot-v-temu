@@ -24,4 +24,9 @@
         android:name="com.anekdot.vtemu.ui.favorites.FavoritesFragment"
         android:label="@string/tab_favorites" />
 
+    <fragment
+        android:id="@+id/topFragment"
+        android:name="com.anekdot.vtemu.ui.top.TopFragment"
+        android:label="@string/tab_top" />
+
 </navigation>

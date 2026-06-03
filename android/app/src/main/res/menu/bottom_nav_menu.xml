@@ -16,4 +16,8 @@
         android:id="@+id/favoritesFragment"
         android:icon="@drawable/ic_favorite"
         android:title="@string/tab_favorites" />
+    <item
+        android:id="@+id/topFragment"
+        android:icon="@drawable/ic_trophy"
+        android:title="@string/tab_top" />
 </menu>

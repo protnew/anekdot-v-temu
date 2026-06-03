@@ -51,7 +51,7 @@ class FavoritesViewModel(
         }
     }
 
-    fun removeFavorite(jokeId: String) {
+    fun removeFavorite(jokeId: Int) {
         viewModelScope.launch {
             when (val result = repository.removeFavorite(jokeId, userId)) {
                 is ApiResponse.Success -> {
@@ -66,7 +66,7 @@ class FavoritesViewModel(
         }
     }
 
-    fun addFavorite(jokeId: String) {
+    fun addFavorite(jokeId: Int) {
         viewModelScope.launch {
             when (val result = repository.addFavorite(jokeId, userId)) {
                 is ApiResponse.Success -> {

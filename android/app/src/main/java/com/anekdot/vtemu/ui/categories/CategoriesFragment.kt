@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.anekdot.vtemu.R
 import com.anekdot.vtemu.databinding.FragmentCategoriesBinding
 import com.anekdot.vtemu.repository.AnekdotRepository
+import com.anekdot.vtemu.util.CatEmojis
 import com.anekdot.vtemu.viewmodel.CategoriesViewModel
 import com.anekdot.vtemu.viewmodel.ViewModelFactory
 
@@ -80,7 +81,7 @@ class CategoryViewHolder(
 ) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
 
     fun bind(item: CategoryItem) {
-        itemView.findViewById<android.widget.TextView>(R.id.category_name).text = item.name
+        itemView.findViewById<android.widget.TextView>(R.id.category_name).text = CatEmojis.withLabel(item.name)
         itemView.findViewById<android.widget.TextView>(R.id.joke_count).text =
             itemView.context.getString(R.string.joke_count, item.count)
         itemView.setOnClickListener { onClick(item.name) }

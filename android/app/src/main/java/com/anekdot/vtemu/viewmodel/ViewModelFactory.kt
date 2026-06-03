@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.anekdot.vtemu.repository.AnekdotRepository
+import com.anekdot.vtemu.ui.top.TopViewModel
 
 class ViewModelFactory(
     private val repository: AnekdotRepository,
@@ -16,6 +17,7 @@ class ViewModelFactory(
             RandomViewModel::class.java -> RandomViewModel(repository) as T
             SearchViewModel::class.java -> SearchViewModel(repository) as T
             CategoriesViewModel::class.java -> CategoriesViewModel(repository) as T
+            TopViewModel::class.java -> TopViewModel(repository) as T
             FavoritesViewModel::class.java -> {
                 val userId = getUserId()
                 FavoritesViewModel(repository, userId) as T

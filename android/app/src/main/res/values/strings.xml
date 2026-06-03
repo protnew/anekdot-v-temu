@@ -21,4 +21,12 @@
     <string name="share_text">%s\n\n— Анекдот в тему</string>
     <string name="generate">Сгенерировать</string>
     <string name="jokes_count_total">%d шуток в базе</string>
+    <string name="tab_top">Топ</string>
+    <string name="top_empty">Топ пока пуст</string>
+    <string name="copied">Скопировано</string>
+    <string name="generate_hint">Тема для генерации…</string>
+    <string name="enter_topic">Введите тему</string>
+    <string name="stats_jokes">%d шуток</string>
+    <string name="stats_cats">%d категорий</string>
+    <string name="generating">Генерация…</string>
 </resources>
