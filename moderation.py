@@ -211,6 +211,10 @@ _PROFANITY_STEMS: frozenset = frozenset({
     "пиздабол",
     "ебаный", "ёбаный",
     "уебан", "уёбан",
+
+    # гандон / гондон
+    "гандон", "гандона", "гандоны", "гандоном",
+    "гондон", "гондона", "гондоны",
 })
 
 
@@ -249,7 +253,7 @@ class ProfanityFilter:
                     for i in range(min_len):
                         if norm[i] == stem[i]:
                             common += 1
-                    if common / max(len(norm), len(stem)) >= 0.55:
+                    if common / max(len(norm), len(stem)) >= 0.65:
                         found.append(word)
                         break
         return found
@@ -295,7 +299,7 @@ class ProfanityFilter:
                     for i in range(min_len):
                         if norm[i] == stem[i]:
                             common += 1
-                    if common / max(len(norm), len(stem)) >= 0.55:
+                    if common / max(len(norm), len(stem)) >= 0.65:
                         return '***'
             return word
 

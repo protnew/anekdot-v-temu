@@ -492,8 +492,13 @@ async def rate_joke(request: RatingRequest):
     raise HTTPException(status_code=404, detail="Joke not found")
 
 @app.get("/api/joke/random")
-async def random_joke():
-    return random.choice(search_engine.jokes)
+async def random_joke(category: Optional[str] = Query(None)):
+    jokes = search_engine.jokes
+    if category:
+        filtered = [j for j in jokes if j.get("category") == category]
+        if filtered:
+            return random.choice(filtered)
+    return random.choice(jokes)
 
 
 # ============================================================

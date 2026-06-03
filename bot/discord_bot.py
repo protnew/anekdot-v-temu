@@ -20,7 +20,7 @@ logging.basicConfig(
 log = logging.getLogger("joke_bot")
 
 # ── Конфиг из env ────────────────────────────────────────────
-TOKEN = os.environ["DISCORD_BOT_TOKEN"]
+TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
 API_BASE = os.environ.get("API_BASE", "http://localhost:8000").rstrip("/")
 
 # ── Цвет брендинга ───────────────────────────────────────────
@@ -212,6 +212,26 @@ async def cmd_cat(
     joke_id = data.get("id", 0)
     view = JokeView(joke_id, category=name)
     await interaction.response.send_message(embed=embed, view=view)
+
+
+@bot.slash_command(name="search", description="Поиск анекдотов по тексту")
+async def cmd_search(
+    interaction: discord.Interaction,
+    query: str = commands.Param(description="Поисковый запрос"),
+):
+    """Полнотекстовый поиск шуток."""
+    data = api_get("/api/jokes/search", params={"q": query, "limit": 3})
+    if not data or not data.get("jokes"):
+        await interaction.response.send_message(f"🔍 По запросу **{query}** ничего не найдено.", ephemeral=True)
+        return
+
+    embed = Embed(title=f"🔍 Результаты: {query}", colour=PURPLE)
+    for i, joke in enumerate(data["jokes"][:3], start=1):
+        text = joke.get("text", "")[:200]
+        rating = joke.get("rating", 0)
+        embed.add_field(name=f"#{i}  ⭐ {rating}", value=text, inline=False)
+
+    await interaction.response.send_message(embed=embed)
 
 
 # ── Запуск ───────────────────────────────────────────────────

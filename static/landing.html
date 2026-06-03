@@ -3,742 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Анекдот в Тему — 112 000+ AI шуток по контексту разговора</title>
-    <meta name="description" content="Анекдот в Тему — приложение с 112 000+ анекдотов на 10 языках. Искусственный интеллект подбирает идеальную шутку по контексту вашего разговора за менее чем 1 секунду. 41 категория шуток.">
-    <meta name="keywords" content="анекдоты, шутки, AI, искусственный интеллект, анекдот в тему, приложение, контекст, подбор шуток">
-    <meta name="author" content="Анекдот в Тему">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://anekdot.app/">
-
-    <!-- Open Graph -->
+    <title>Анекдот в Тему — 112 000+ AI шуток на любой контекст</title>
+    <meta name="description" content="Приложение Анекдот в Тему: 112 000+ шуток в 41 категории на 10 языках. AI подбирает идеальную шутку под контекст разговора в реальном времени.">
+    <meta property="og:title" content="Анекдот в Тему — 112 000+ AI шуток">
+    <meta property="og:description" content="AI-приложение для контекстных шуток. 41 категория, 10 языков, голосовое управление.">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Анекдот в Тему — 112 000+ AI шуток по контексту">
-    <meta property="og:description" content="Искусственный интеллект подбирает идеальную шутку по контексту вашего разговора. 112K+ анекдотов, 41 категория, 10 языков.">
-    <meta property="og:url" content="https://anekdot.app/">
-    <meta property="og:site_name" content="Анекдот в Тему">
-    <meta property="og:locale" content="ru_RU">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Анекдот в Тему — AI шутки по контексту">
-    <meta name="twitter:description" content="112 000+ анекдотов. AI подбирает шутку по контексту разговора за <1 сек.">
-
-    <!-- Schema.org JSON-LD -->
+    <meta property="og:image" content="/static/og-image.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a0a1a">
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "Анекдот в Тему",
-        "description": "Приложение с 112 000+ анекдотами. Искусственный интеллект подбирает шутку по контексту разговора за менее чем 1 секунду.",
-        "url": "https://anekdot.app/",
-        "applicationCategory": "EntertainmentApplication",
-        "operatingSystem": "Android",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "RUB"
-        },
-        "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.8",
-            "ratingCount": "2500",
-            "bestRating": "5"
-        },
-        "inLanguage": ["ru", "en", "de", "fr", "es", "pt", "it", "nl", "pl", "cs"]
+        "description": "AI-приложение для контекстных шуток — 112 000+ анекдотов в 41 категории на 10 языках",
+        "url": "https://anekdot.app",
+        "applicationCategory": "Entertainment",
+        "operatingSystem": "Android, Web",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "RUB" },
+        "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "2340" }
     }
     </script>
-
     <style>
-        /* ========== RESET & VARIABLES ========== */
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
         :root {
-            --bg: #0f0f1a;
-            --bg2: #12122a;
-            --card: #1a1a2e;
-            --card-hover: #222245;
-            --accent: #e94560;
-            --accent-glow: rgba(233, 69, 96, 0.3);
-            --accent2: #0f3460;
-            --accent3: #533483;
-            --text: #eaeaea;
-            --text2: #9999aa;
-            --text3: #666680;
-            --success: #4caf50;
-            --radius: 16px;
-            --radius-sm: 10px;
-            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            --shadow-accent: 0 4px 24px rgba(233, 69, 96, 0.25);
-        }
-
-        html { scroll-behavior: smooth; }
-
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-
-        /* ========== SCROLL ANIMATIONS ========== */
-        .reveal {
-            opacity: 0;
-            transform: translateY(40px);
-            transition: opacity 0.7s ease, transform 0.7s ease;
-        }
-        .reveal.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* ========== NAVIGATION ========== */
-        .navbar {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 1000;
-            background: rgba(15, 15, 26, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            transition: var(--transition);
-        }
-        .navbar.scrolled {
-            background: rgba(15, 15, 26, 0.95);
-            box-shadow: 0 2px 20px rgba(0,0,0,0.5);
-        }
-        .nav-inner {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 14px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .nav-logo {
-            font-size: 22px;
-            font-weight: 700;
-            text-decoration: none;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .nav-logo span { color: var(--accent); }
-        .nav-links {
-            display: flex;
-            gap: 28px;
-            list-style: none;
-        }
-        .nav-links a {
-            color: var(--text2);
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
-            transition: var(--transition);
-            position: relative;
-        }
-        .nav-links a:hover { color: var(--accent); }
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: -4px; left: 0;
-            width: 0; height: 2px;
-            background: var(--accent);
-            transition: var(--transition);
-        }
-        .nav-links a:hover::after { width: 100%; }
-        .nav-burger {
-            display: none;
-            background: none; border: none;
-            color: var(--text);
-            font-size: 28px;
-            cursor: pointer;
-        }
-
-        /* ========== HERO ========== */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 120px 24px 80px;
-            position: relative;
-            overflow: hidden;
-        }
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: -50%; left: -50%;
-            width: 200%; height: 200%;
-            background: radial-gradient(ellipse at 30% 20%, rgba(233, 69, 96, 0.08) 0%, transparent 50%),
-                        radial-gradient(ellipse at 70% 80%, rgba(83, 52, 131, 0.08) 0%, transparent 50%);
-            animation: heroGlow 15s ease-in-out infinite alternate;
-        }
-        @keyframes heroGlow {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(-3%, -3%) rotate(3deg); }
-        }
-        .hero-content { position: relative; z-index: 1; max-width: 800px; }
-        .hero-emoji {
-            font-size: 64px;
-            margin-bottom: 20px;
-            animation: bounce 2s ease-in-out infinite;
-        }
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-12px); }
-        }
-        .hero h1 {
-            font-size: clamp(2.2rem, 6vw, 3.8rem);
-            font-weight: 800;
-            margin-bottom: 20px;
-            background: linear-gradient(135deg, var(--text), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .hero-subtitle {
-            font-size: clamp(1rem, 2.5vw, 1.35rem);
-            color: var(--text2);
-            margin-bottom: 40px;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .hero-subtitle strong { color: var(--accent); font-weight: 600; }
-        .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-
-        /* ========== BUTTONS ========== */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 16px 36px;
-            border-radius: 50px;
-            font-size: 17px;
-            font-weight: 600;
-            text-decoration: none;
-            border: none;
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: inherit;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent), #c73652);
-            color: #fff;
-            box-shadow: var(--shadow-accent);
-        }
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 32px rgba(233, 69, 96, 0.4);
-        }
-        .btn-secondary {
-            background: var(--card);
-            color: var(--text);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .btn-secondary:hover {
-            background: var(--card-hover);
-            transform: translateY(-3px);
-        }
-        .btn:active { transform: translateY(0) scale(0.98); }
-
-        /* ========== SECTIONS ========== */
-        section {
-            padding: 100px 24px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .section-header {
-            text-align: center;
-            margin-bottom: 60px;
-        }
-        .section-tag {
-            display: inline-block;
-            background: rgba(233, 69, 96, 0.12);
-            color: var(--accent);
-            padding: 6px 18px;
-            border-radius: 50px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            letter-spacing: 0.5px;
-        }
-        .section-title {
-            font-size: clamp(1.8rem, 4vw, 2.6rem);
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .section-desc {
-            color: var(--text2);
-            font-size: 17px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* ========== HOW IT WORKS ========== */
-        .how-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 30px;
-            position: relative;
-        }
-        .how-card {
-            background: var(--card);
-            border-radius: var(--radius);
-            padding: 40px 30px;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.04);
-            transition: var(--transition);
-            position: relative;
-        }
-        .how-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow);
-            border-color: rgba(233, 69, 96, 0.15);
-        }
-        .how-icon {
-            width: 72px; height: 72px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            margin: 0 auto 20px;
-            background: rgba(233, 69, 96, 0.1);
-        }
-        .how-step {
-            position: absolute;
-            top: -14px; left: 50%;
-            transform: translateX(-50%);
-            background: var(--accent);
-            color: #fff;
-            width: 28px; height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: 700;
-        }
-        .how-card h3 {
-            font-size: 20px;
-            margin-bottom: 12px;
-        }
-        .how-card p {
-            color: var(--text2);
-            font-size: 15px;
-            line-height: 1.7;
-        }
-        .how-arrow {
-            display: none;
-            position: absolute;
-            right: -18px; top: 50%;
-            transform: translateY(-50%);
-            font-size: 24px;
-            color: var(--accent);
-            z-index: 2;
-        }
-
-        /* ========== STATS ========== */
-        .stats-section {
-            background: var(--bg2);
-            max-width: none;
-            padding: 80px 24px;
-            margin: 0;
-        }
-        .stats-inner {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 24px;
-        }
-        .stat-card {
-            background: var(--card);
-            border-radius: var(--radius);
-            padding: 36px 24px;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.04);
-            transition: var(--transition);
-        }
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow);
-        }
-        .stat-emoji {
-            font-size: 36px;
-            margin-bottom: 12px;
-        }
-        .stat-value {
-            font-size: 2.4rem;
-            font-weight: 800;
-            color: var(--accent);
-            margin-bottom: 4px;
-        }
-        .stat-label {
-            color: var(--text2);
-            font-size: 15px;
-        }
-
-        /* ========== CATEGORIES ========== */
-        .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 14px;
-        }
-        .cat-card {
-            background: var(--card);
-            border-radius: var(--radius-sm);
-            padding: 18px 14px;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.04);
-            transition: var(--transition);
-            cursor: default;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-        .cat-card:hover {
-            background: var(--card-hover);
-            transform: translateY(-4px);
-            border-color: rgba(233, 69, 96, 0.2);
-        }
-        .cat-emoji { font-size: 28px; }
-        .cat-name {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text);
-        }
-        .cat-count {
-            font-size: 11px;
-            color: var(--text3);
-        }
-
-        /* ========== TRY SECTION ========== */
-        .try-section { position: relative; }
-        .try-container {
-            max-width: 700px;
-            margin: 0 auto;
-            background: var(--card);
-            border-radius: var(--radius);
-            padding: 40px;
-            border: 1px solid rgba(255,255,255,0.04);
-        }
-        .try-input-group {
-            margin-bottom: 20px;
-        }
-        .try-input-group label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text2);
-            margin-bottom: 10px;
-        }
-        .try-textarea {
-            width: 100%;
-            min-height: 120px;
-            background: var(--bg);
-            color: var(--text);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: var(--radius-sm);
-            padding: 16px;
-            font-size: 16px;
-            font-family: inherit;
-            resize: vertical;
-            transition: var(--transition);
-            line-height: 1.6;
-        }
-        .try-textarea::placeholder { color: var(--text3); }
-        .try-textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
-        }
-        .try-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-        .try-result {
-            margin-top: 24px;
-            padding: 24px;
-            background: rgba(233, 69, 96, 0.06);
-            border-left: 3px solid var(--accent);
-            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-            display: none;
-            animation: fadeSlideIn 0.4s ease;
-        }
-        .try-result.show { display: block; }
-        .try-result-text {
-            font-size: 16px;
-            line-height: 1.7;
-            margin-bottom: 12px;
-        }
-        .try-result-meta {
-            font-size: 13px;
-            color: var(--text3);
-        }
-        .try-loading {
-            display: none;
-            margin-top: 20px;
-            text-align: center;
-            color: var(--text2);
-            font-size: 15px;
-        }
-        .try-loading.show { display: block; }
-        .try-loading .spinner {
-            display: inline-block;
-            width: 20px; height: 20px;
-            border: 2px solid var(--text3);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            vertical-align: middle;
-            margin-right: 8px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ========== DOWNLOAD ========== */
-        .download-section {
-            text-align: center;
-            position: relative;
-        }
-        .download-card {
-            background: linear-gradient(135deg, var(--card), var(--bg2));
-            border-radius: 24px;
-            padding: 60px 40px;
-            border: 1px solid rgba(233, 69, 96, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-        .download-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: radial-gradient(ellipse at 50% 0%, rgba(233, 69, 96, 0.08), transparent 70%);
-        }
-        .download-card > * { position: relative; z-index: 1; }
-        .download-card h2 {
-            font-size: clamp(1.8rem, 4vw, 2.4rem);
-            margin-bottom: 16px;
-        }
-        .download-card p {
-            color: var(--text2);
-            font-size: 17px;
-            margin-bottom: 32px;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .download-buttons {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .btn-download {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 32px;
-            background: var(--card);
-            color: var(--text);
-            border-radius: 14px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: var(--transition);
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-        .btn-download:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow);
-            border-color: rgba(233, 69, 96, 0.2);
-        }
-        .btn-download .dl-icon { font-size: 28px; }
-        .btn-download .dl-label { font-size: 12px; color: var(--text2); }
-        .btn-download .dl-store { font-size: 17px; }
-
-        /* ========== RANDOM JOKE DISPLAY ========== */
-        .random-joke {
-            margin-top: 32px;
-            padding: 24px 28px;
-            background: var(--card);
-            border-radius: var(--radius);
-            max-width: 650px;
-            margin-left: auto;
-            margin-right: auto;
-            text-align: left;
-            display: none;
-            border: 1px solid rgba(233, 69, 96, 0.1);
-            animation: fadeSlideIn 0.4s ease;
-        }
-        .random-joke.show { display: block; }
-        .random-joke-label {
-            font-size: 12px;
-            color: var(--accent);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 12px;
-        }
-        .random-joke-text {
-            font-size: 17px;
-            line-height: 1.7;
-        }
-        .random-joke-cat {
-            margin-top: 12px;
-            font-size: 13px;
-            color: var(--text3);
-        }
-        @keyframes fadeSlideIn {
-            from { opacity: 0; transform: translateY(16px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ========== FOOTER ========== */
-        .footer {
-            border-top: 1px solid rgba(255,255,255,0.05);
-            padding: 40px 24px;
-            text-align: center;
-        }
-        .footer-inner {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-        .footer-copy {
-            color: var(--text3);
-            font-size: 14px;
-        }
-        .footer-links {
-            display: flex;
-            gap: 24px;
-            list-style: none;
-        }
-        .footer-links a {
-            color: var(--text2);
-            text-decoration: none;
-            font-size: 14px;
-            transition: var(--transition);
-        }
-        .footer-links a:hover { color: var(--accent); }
-
-        /* ========== RESPONSIVE ========== */
+            --bg: #0a0a1a;
+            --card: #12122a;
+            --accent: #6c5ce7;
+            --accent2: #00cec9;
+            --text: #e0e0f0;
+            --muted: #8888aa;
+            --glow: rgba(108, 92, 231, 0.3);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        
+        /* Hero */
+        .hero { text-align: center; padding: 100px 20px 80px; position: relative; overflow: hidden; }
+        .hero::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(ellipse at center, var(--glow) 0%, transparent 60%); animation: heroGlow 8s ease-in-out infinite alternate; }
+        @keyframes heroGlow { 0% { opacity: 0.3; transform: scale(1); } 100% { opacity: 0.6; transform: scale(1.1); } }
+        .hero h1 { font-size: clamp(2.5rem, 6vw, 4rem); margin-bottom: 20px; position: relative; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 1.3rem; color: var(--muted); max-width: 700px; margin: 0 auto 40px; position: relative; }
+        .hero-stats { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; position: relative; }
+        .hero-stat { text-align: center; }
+        .hero-stat .num { font-size: 2.5rem; font-weight: 800; color: var(--accent2); }
+        .hero-stat .label { color: var(--muted); font-size: 0.9rem; }
+        
+        /* Sections */
+        .section { padding: 80px 0; }
+        .section-header { text-align: center; margin-bottom: 50px; }
+        .section-tag { display: inline-block; padding: 4px 16px; border-radius: 20px; background: rgba(108,92,231,0.15); color: var(--accent); font-size: 0.85rem; margin-bottom: 12px; }
+        .section-title { font-size: clamp(1.8rem, 4vw, 2.5rem); margin-bottom: 12px; }
+        .section-desc { color: var(--muted); max-width: 600px; margin: 0 auto; }
+        
+        /* How it works */
+        .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; }
+        .how-card { background: var(--card); border-radius: 16px; padding: 30px; text-align: center; border: 1px solid rgba(108,92,231,0.1); transition: transform 0.3s, box-shadow 0.3s; }
+        .how-card:hover { transform: translateY(-5px); box-shadow: 0 10px 40px var(--glow); }
+        .how-step { width: 36px; height: 36px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-weight: 700; }
+        .how-icon { font-size: 2.5rem; margin-bottom: 15px; }
+        .how-card h3 { margin-bottom: 10px; }
+        .how-card p { color: var(--muted); font-size: 0.95rem; }
+        .how-arrow { font-size: 1.5rem; color: var(--accent); margin-top: 15px; }
+        
+        /* Categories */
+        .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .cat-badge { background: var(--card); border-radius: 12px; padding: 12px; text-align: center; border: 1px solid rgba(108,92,231,0.1); transition: all 0.3s; cursor: pointer; }
+        .cat-badge:hover { border-color: var(--accent); background: rgba(108,92,231,0.1); }
+        .cat-emoji { font-size: 1.5rem; display: block; margin-bottom: 6px; }
+        .cat-name { font-size: 0.85rem; color: var(--text); }
+        .cat-count { font-size: 0.75rem; color: var(--muted); }
+        
+        /* Try it */
+        .try-section { background: var(--card); border-radius: 24px; padding: 40px; text-align: center; border: 1px solid rgba(108,92,231,0.15); }
+        .try-input { width: 100%; max-width: 600px; padding: 16px 20px; border-radius: 12px; border: 2px solid rgba(108,92,231,0.2); background: rgba(0,0,0,0.3); color: var(--text); font-size: 1rem; resize: vertical; min-height: 60px; outline: none; transition: border-color 0.3s; }
+        .try-input:focus { border-color: var(--accent); }
+        .try-btn { display: inline-block; margin-top: 16px; padding: 14px 40px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 12px; color: white; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.3s; }
+        .try-btn:hover { transform: scale(1.05); box-shadow: 0 5px 30px var(--glow); }
+        .result-box { margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 12px; display: none; text-align: left; }
+        .result-box.visible { display: block; animation: fadeSlideIn 0.5s ease; }
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .result-text { font-size: 1.1rem; margin-bottom: 10px; }
+        .result-cat { color: var(--accent); font-size: 0.9rem; }
+        
+        /* Features */
+        .feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+        .feat-card { background: var(--card); border-radius: 16px; padding: 24px; border: 1px solid rgba(108,92,231,0.1); }
+        .feat-icon { font-size: 2rem; margin-bottom: 12px; }
+        .feat-card h3 { margin-bottom: 8px; font-size: 1.1rem; }
+        .feat-card p { color: var(--muted); font-size: 0.9rem; }
+        
+        /* Download */
+        .download-section { text-align: center; }
+        .download-btns { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 30px; }
+        .dl-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 28px; border-radius: 12px; text-decoration: none; color: white; font-weight: 600; transition: transform 0.2s; }
+        .dl-btn:hover { transform: scale(1.05); }
+        .dl-btn.android { background: #3DDC84; color: #1a1a2e; }
+        .dl-btn.web { background: var(--accent); }
+        .dl-btn.tg { background: #0088cc; }
+        
+        /* Footer */
+        footer { text-align: center; padding: 40px 20px; border-top: 1px solid rgba(108,92,231,0.1); color: var(--muted); }
+        footer a { color: var(--accent); text-decoration: none; }
+        
+        /* Responsive */
         @media (max-width: 768px) {
-            .nav-links { display: none; }
-            .nav-burger { display: block; }
-            .nav-links.open {
-                display: flex;
-                flex-direction: column;
-                position: absolute;
-                top: 100%; left: 0; right: 0;
-                background: rgba(15, 15, 26, 0.98);
-                padding: 20px 24px;
-                gap: 16px;
-                border-bottom: 1px solid rgba(255,255,255,0.05);
-            }
-            .hero { padding: 100px 20px 60px; min-height: auto; }
-            .hero-emoji { font-size: 48px; }
-            section { padding: 60px 16px; }
-            .try-container { padding: 24px; }
-            .download-card { padding: 40px 24px; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .categories-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-            .footer-inner { flex-direction: column; text-align: center; }
+            .hero { padding: 60px 15px 50px; }
+            .hero-stats { gap: 20px; }
+            .section { padding: 50px 0; }
         }
-
-        @media (min-width: 769px) {
-            .how-arrow { display: block; }
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 2rem; }
+            .hero-stat .num { font-size: 1.8rem; }
         }
-
-        /* ========== SCROLL TO TOP ========== */
-        .scroll-top {
-            position: fixed;
-            bottom: 30px; right: 30px;
-            width: 48px; height: 48px;
-            border-radius: 50%;
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: var(--transition);
-            z-index: 999;
-            box-shadow: var(--shadow-accent);
-        }
-        .scroll-top.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .scroll-top:hover { transform: translateY(-3px); }
     </style>
 </head>
 <body>
 
-    <!-- NAVIGATION -->
-    <nav class="navbar" id="navbar">
-        <div class="nav-inner">
-            <a href="/" class="nav-logo">😂 Анекдот <span>в Тему</span></a>
-            <ul class="nav-links" id="navLinks">
-                <li><a href="#how">Как работает</a></li>
-                <li><a href="#stats">Статистика</a></li>
-                <li><a href="#categories">Категории</a></li>
-                <li><a href="#try">Попробовать</a></li>
-                <li><a href="#download">Скачать</a></li>
-            </ul>
-            <button class="nav-burger" id="navBurger" aria-label="Меню">☰</button>
-        </div>
-    </nav>
+<!-- Hero -->
+<section class="hero">
+    <h1>Анекдот в Тему</h1>
+    <p>AI-приложение, которое подбирает идеальную шутку под контекст вашего разговора в реальном времени</p>
+    <div class="hero-stats">
+        <div class="hero-stat"><div class="num">112K+</div><div class="label">шуток</div></div>
+        <div class="hero-stat"><div class="num">41</div><div class="label">категория</div></div>
+        <div class="hero-stat"><div class="num">10</div><div class="label">языков</div></div>
+        <div class="hero-stat"><div class="num">AI</div><div class="label">подбор</div></div>
+    </div>
+</section>
 
-    <!-- HERO -->
-    <section class="hero" id="hero">
-        <div class="hero-content">
-            <div class="hero-emoji">😂</div>
-            <h1>Анекдот в Тему</h1>
-            <p class="hero-subtitle">
-                <strong>112 000+</strong> анекдотов, подобранных искусственным интеллектом по контексту вашего разговора
-            </p>
-            <div class="hero-buttons">
-                <button class="btn btn-primary" id="randomJokeBtn" onclick="loadRandomJoke()">
-                    🎲 Случайный анекдот
-                </button>
-                <a href="#try" class="btn btn-secondary">💬 Попробовать</a>
-            </div>
-            <div class="random-joke" id="randomJoke">
-                <div class="random-joke-label">🎲 Случайный анекдот</div>
-                <div class="random-joke-text" id="randomJokeText"></div>
-                <div class="random-joke-cat" id="randomJokeCat"></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- HOW IT WORKS -->
-    <section id="how">
-        <div class="section-header reveal">
+<!-- How it works -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
             <div class="section-tag">Принцип работы</div>
             <h2 class="section-title">Как работает Анекдот в Тему?</h2>
             <p class="section-desc">Три простых шага — и идеальная шутка уже в вашем разговоре</p>
         </div>
         <div class="how-grid">
-            <div class="how-card reveal">
+            <div class="how-card">
                 <div class="how-step">1</div>
                 <div class="how-icon">🎤</div>
                 <h3>Говорите</h3>
-                <p>Ведите беседу как обычно. Наше приложение слушает контекст разговора в реальном времени.</p>
-                <div class="how-arrow">→</div>
+                <p>Ведите беседу как обычно. Приложение слушает контекст разговора в реальном времени.</p>
             </div>
-            <div class="how-card reveal">
-                <div
+            <div class="how-card">
+                <div class="how-step">2</div>
+                <div class="how-icon">🧠</div>
+                <h3>AI анализирует</h3>
+                <p>Нейросеть определяет тему разговора и подбирает лучшую шутку из базы 112K+ анекдотов.</p>
+            </div>
+            <div class="how-card">
+                <div class="how-step">3</div>
+                <div class="how-icon">😂</div>
+                <h3>Смейтесь</h3>
+                <p>Шутка появляется на экране в нужный момент. Голосовое озвучивание через TTS.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <div class="section-tag">Категории</div>
+            <h2 class="section-title">41 категория на любой вкус</h2>
+            <p class="section-desc">От айти-шуток до чёрного юмора — найдётся анекдот для любой компании</p>
+        </div>
+        <div class="cat-grid" id="catGrid">
+            <div class="cat-badge"><span class="cat-emoji">💻</span><span class="cat-name">Айти</span><br><span class="cat-count">5000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">👨‍👩‍👧‍👦</span><span class="cat-name">Семья</span><br><span class="cat-count">8000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">💼</span><span class="cat-name">Работа</span><br><span class="cat-count">6000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🎓</span><span class="cat-name">Студенты</span><br><span class="cat-count">3000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🐱</span><span class="cat-name">Котики</span><br><span class="cat-count">2000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🚗</span><span class="cat-name">Авто</span><br><span class="cat-count">2500+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🏥</span><span class="cat-name">Медицина</span><br><span class="cat-count">2000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🍽️</span><span class="cat-name">Еда</span><br><span class="cat-count">1500+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🏈</span><span class="cat-name">Спорт</span><br><span class="cat-count">1800+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">💕</span><span class="cat-name">Любовь</span><br><span class="cat-count">4000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🏫</span><span class="cat-name">Школа</span><br><span class="cat-count">2000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">💰</span><span class="cat-name">Деньги</span><br><span class="cat-count">3000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🇺🇸</span><span class="cat-name">English</span><br><span class="cat-count">5000+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🇪🇸</span><span class="cat-name">Español</span><br><span class="cat-count">1500+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🇩🇪</span><span class="cat-name">Deutsch</span><br><span class="cat-count">1500+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🇫🇷</span><span class="cat-name">Français</span><br><span class="cat-count">1500+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🇨🇳</span><span class="cat-name">中文</span><br><span class="cat-count">1200+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🇯🇵</span><span class="cat-name">日本語</span><br><span class="cat-count">1200+</span></div>
+            <div class="cat-badge"><span class="cat-emoji">🌍</span><span class="cat-name">+ ещё 22</span><br><span class="cat-count">категории</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- Try it -->
+<section class="section">
+    <div class="container">
+        <div class="try-section">
+            <div class="section-tag">Попробуйте</div>
+            <h2 class="section-title">Введите тему разговора</h2>
+            <p class="section-desc" style="margin-bottom:24px">AI подберёт идеальную шутку из 112 000+ базы</p>
+            <textarea class="try-input" id="tryInput" placeholder="Например: программист пишет код и находит баг..."></textarea>
+            <br>
+            <button class="try-btn" id="tryBtn" onclick="searchJoke()">😂 Найти шутку</button>
+            <div class="result-box" id="resultBox">
+                <div class="result-text" id="resultText"></div>
+                <div class="result-cat" id="resultCat"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <div class="section-tag">Возможности</div>
+            <h2 class="section-title">Почему Анекдот в Тему?</h2>
+        </div>
+        <div class="feat-grid">
+            <div class="feat-card"><div class="feat-icon">🎙️</div><h3>Голосовое управление</h3><p>Whisper + Google Speech для распознавания речи. TTS озвучивание шуток.</p></div>
+            <div class="feat-card"><div class="feat-icon">🔍</div><h3>Контекстный поиск</h3><p>TF-IDF + семантический анализ для точного подбора шутки к теме.</p></div>
+            <div class="feat-card"><div class="feat-icon">🌍</div><h3>10 языков</h3><p>Русский, English, Español, Deutsch, Français, Português, 中文, 日本語, العربية, हिन्दी.</p></div>
+            <div class="feat-card"><div class="feat-icon">📱</div><h3>Android + Web</h3><p>Нативное Android приложение и Progressive Web App для браузера.</p></div>
+            <div class="feat-card"><div class="feat-icon">🎮</div><h3>Discord бот</h3><p>Slash-команды для шуток прямо в Discord сервере.</p></div>
+            <div class="feat-card"><div class="feat-icon">🔒</div><h3>Модерация</h3><p>Автоматическая фильтрация спама и нежелательного контента.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- Download -->
+<section class="section download-section">
+    <div class="container">
+        <div class="section-header">
+            <div class="section-tag">Скачать</div>
+            <h2 class="section-title">Начните бесплатно</h2>
+        </div>
+        <div class="download-btns">
+            <a href="#" class="dl-btn android">🤖 Google Play</a>
+            <a href="#" class="dl-btn web">🌐 Web App</a>
+            <a href="#" class="dl-btn tg">💬 Telegram</a>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <p>© 2024-2026 Анекдот в Тему — AI-приложение для контекстных шуток</p>
+        <p style="margin-top:8px"><a href="https://github.com/protnew/anekdot-v-temu">GitHub</a> · <a href="/api/stats">API</a> · <a href="/docs">Документация</a></p>
+    </div>
+</footer>
+
+<script>
+const API = window.location.origin;
+
+async function searchJoke() {
+    const input = document.getElementById('tryInput');
+    const btn = document.getElementById('tryBtn');
+    const box = document.getElementById('resultBox');
+    const text = document.getElementById('resultText');
+    const cat = document.getElementById('resultCat');
+    
+    const query = input.value.trim();
+    if (!query) { input.focus(); return; }
+    
+    btn.textContent = '⏳ Ищу...';
+    btn.disabled = true;
+    
+    try {
+        const resp = await fetch(API + '/api/jokes/context', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: query, count: 1 })
+        });
+        const data = await resp.json();
+        
+        if (data.jokes && data.jokes.length > 0) {
+            const joke = data.jokes[0];
+            text.textContent = joke.text;
+            cat.textContent = '📂 ' + (joke.category || 'разное') + ' · ⭐ ' + (joke.rating || 'N/A');
+            box.classList.add('visible');
+        } else {
+            text.textContent = 'Не нашлось шутки 😅 Попробуйте другую тему!';
+            cat.textContent = '';
+            box.classList.add('visible');
+        }
+    } catch (e) {
+        text.textContent = 'Ошибка подключения к серверу';
+        cat.textContent = '';
+        box.classList.add('visible');
+    }
+    
+    btn.textContent = '😂 Найти шутку';
+    btn.disabled = false;
+}
+
+// Enter key
+document.getElementById('tryInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); searchJoke(); }
+});
+</script>
+
+</body>
+</html>
