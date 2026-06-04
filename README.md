@@ -1,113 +1,32 @@
-# 😂 Анекдот в тему v3.1
+# 😂 Anekdot v Temu (Joke in Context)
 
-**AI-приложение для подбора контекстных шуток в реальном времени.**
+An AI-powered application that delivers the perfect joke at the perfect moment. It listens to your conversation through the device microphone, recognizes speech in real-time, analyzes the context and topic being discussed, and instantly surfaces a relevant joke or anecdote on screen.
 
-Слушает разговор через микрофон → распознаёт речь → подбирает анекдот → показывает на экране.
+## How It Works
 
-## 🚀 Быстрый старт
+The app runs continuously in the background, capturing audio through the microphone. Speech is transcribed using Android's built-in speech recognition engine. The transcribed text is then analyzed using natural language processing to identify the conversation topic, sentiment, and key themes. Based on this analysis, the app searches a curated database of thousands of jokes and anecdotes to find the best match.
 
-### Полный запуск (бэкенд + микрофон + overlay):
+The selected joke appears as a discreet notification or overlay on screen, giving the user a perfectly timed punchline to drop into the conversation. It's like having a comedy writer feeding you material in real-time.
+
+## Why Build This?
+
+Humor is a universal social lubricant. A well-timed joke can defuse tension, break the ice at a party, or make a presentation memorable. But not everyone has a mental library of jokes ready for every situation. This app bridges that gap, using AI to match conversation context with relevant humor.
+
+## Tech Stack
+
+- **Kotlin** — native Android development
+- **Android Speech Recognition API** — real-time transcription
+- **NLP** — topic extraction and context analysis
+- **Local joke database** — no internet required for joke matching
+
+## Getting Started
+
+Clone the repository and open in Android Studio. Build and run on any Android device with microphone access.
+
 ```bash
-cd "5806 Приложение анекдот в тему"
-pip install -r requirements.txt
-python launcher.py full
+git clone https://github.com/protnew/anekdot-v-temu.git
 ```
 
-### Только бэкенд (веб-интерфейс):
-```bash
-python launcher.py server
-# Открой http://localhost:8000
-```
+## License
 
-### Только бэкенд + микрофон (без overlay):
-```bash
-python launcher.py voice
-```
-
-### Только overlay (бэкенд должен быть запущен):
-```bash
-python launcher.py overlay
-```
-
-## 🏗️ Как это работает
-
-```
-┌─────────────────────────────────────────────────┐
-│          РЕАЛЬНЫЙ РАЗГОВОР ЛЮДЕЙ                │
-│   "А мой начальник вчера орал на меня..."        │
-└────────────────┬────────────────────────────────┘
-                 │ 🎤 Микрофон слушает
-                 ▼
-         ┌───────────────┐
-         │ voice_monitor │  Распознаёт речь через Google API
-         │  (7 сек чанк) │  Накапливает контекст (45 сек окно)
-         └───────┬───────┘
-                 │ "начальник орал работа"
-                 ▼
-         ┌───────────────┐
-         │   БЭКЕНД       │  TF-IDF поиск по 4782 шуткам
-         │  (FastAPI)     │  + keyword boosting
-         └───────┬───────┘
-                 │ Топ-3 шутки
-                 ▼
-         ┌───────────────┐
-         │   OVERLAY      │  Полупрозрачное окно
-         │  (tkinter)     │  поверх всех окон
-         └───────────────┘  в правом нижнем углу
-```
-
-## 📁 Файлы
-
-| Файл | Что делает | Строк |
-|------|-----------|-------|
-| `main.py` | Бэкенд + API (29 endpoints) | 830 |
-| `voice_monitor.py` | Слушает микрофон, распознаёт речь | 454 |
-| `overlay.py` | Всплывающее окно с шутками | 354 |
-| `launcher.py` | Запускает всё одной командой | 70 |
-| `static/index.html` | Веб-интерфейс (тёмная тема) | — |
-| `data/jokes_db.json` | 4782 анекдота, 20 категорий | — |
-| `bot/telegram_bot.py` | Telegram бот | — |
-| `extension/` | Chrome Extension | — |
-| `docker/` | Dockerfile + compose | — |
-
-## 🔧 Зависимости
-
-```
-fastapi, uvicorn, pydantic, scikit-learn, numpy
-openai (опционально — для генерации через GPT)
-SpeechRecognition, pyaudio (для voice_monitor)
-```
-
-## 📱 Android
-
-Для Android-версии нужно:
-1. Использовать Android Speech-to-Text API (встроен в систему)
-2. Показывать шутки через overlay/notification
-3. **Google Play политика**: мониторинг микрофона разрешён ЕСЛИ:
-   - Явное согласие пользователя при запуске
-   - Данные НЕ передаются третьим лицам
-   - Аудио НЕ записывается — только распознаётся локально
-   - В описании приложения указано "использует микрофон для контекстного подбора"
-   - Аналоги: Shazam, Google Assistant, Siri — все слушают микрофон
-
-## 📊 Источники данных
-
-| Откуда | Штук |
-|--------|------|
-| VK «Анекдоты категории Б+» | 800 |
-| Книга «Анекдоты от Никулина» | 1087 |
-| anekdot.ru (архив 2024-2025) | 2424 |
-| Исходная база | 506 |
-| **ИТОГО** | **4782** |
-
-## 🔗 API
-
-| Метод | URL | Что делает |
-|-------|-----|-----------|
-| POST | `/api/jokes/context` | Контекстный поиск шуток |
-| POST | `/api/jokes/generate` | Генерация новой шутки |
-| GET | `/api/jokes/search?q=...` | Поиск по тексту |
-| GET | `/api/joke/random` | Случайная шутка |
-| GET | `/api/categories` | Список категорий |
-
-Полная документация: http://localhost:8000/docs (Swagger UI)
+MIT License
