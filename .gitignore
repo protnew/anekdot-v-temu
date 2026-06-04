@@ -48,3 +48,7 @@ docker/models/*.onnx
 docker/bin/whisper-cli
 docker/lib/*.so
 *.apk
+flutter_app/build/
+dist/
+static/flutter/
+android_kotlin/
