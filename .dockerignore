@@ -1,0 +1,9 @@
+flutter_app/
+android_kotlin/
+dist/
+.git/
+__pycache__/
+*.pyc
+.env
+*.log
+docker/models/silero_vad.onnx

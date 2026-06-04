@@ -1035,10 +1035,14 @@ async def speech_to_text(request: dict):
         raise HTTPException(status_code=400, detail="audio_base64 is required")
     
     # Validate whisper-cli exists
-    if not os.path.exists(WHISPER_CLI):
-        raise HTTPException(status_code=500, detail=f"whisper-cli not found at {WHISPER_CLI}")
-    if not os.path.exists(WHISPER_MODEL):
-        raise HTTPException(status_code=500, detail=f"Whisper model not found at {WHISPER_MODEL}")
+    use_faster_whisper = False
+    if not os.path.exists(WHISPER_CLI) or not os.path.exists(WHISPER_MODEL):
+        # Fallback to faster_whisper (Python) on Windows
+        try:
+            from faster_whisper import WhisperModel
+            use_faster_whisper = True
+        except ImportError:
+            raise HTTPException(status_code=500, detail=f"whisper-cli not found at {WHISPER_CLI} and faster_whisper not installed")
     
     try:
         # Decode base64 → temp WAV file
@@ -1064,15 +1068,35 @@ async def speech_to_text(request: dict):
                 os.unlink(wav_path)
             return {"text": "", "language": language, "confidence": 0.0, "vad": vad_result, "note": "No speech detected"}
         
-        # Step 2: whisper.cpp transcription
-        result = subprocess.run(
-            [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", language, "-f", wav_path,
-             "--no-timestamps", "-t", "4", "--output-txt"],
-            capture_output=True, text=True, timeout=30
-        )
+        # Step 2: Transcription
+        text = ""
+        model_name = ""
         
-        # Parse output — whisper-cli prints text to stdout
-        text = result.stdout.strip()
+        if use_faster_whisper:
+            # faster_whisper (Python) — works on Windows without compiled binary
+            from faster_whisper import WhisperModel
+            fw_model = WhisperModel("base", device="cpu", compute_type="int8")
+            segments, info = fw_model.transcribe(wav_path, language=language if language != "auto" else None)
+            text = " ".join(s.text for s in segments).strip()
+            model_name = "faster_whisper base (CPU)"
+        else:
+            # whisper.cpp (Linux/Docker) — faster, compiled binary
+            result = subprocess.run(
+                [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", language, "-f", wav_path,
+                 "--no-timestamps", "-t", "4", "--output-txt"],
+                capture_output=True, text=True, timeout=30
+            )
+            text = result.stdout.strip()
+            # Also try to read the .txt file whisper may have created
+            txt_path = wav_path + ".txt"
+            if os.path.exists(txt_path):
+                with open(txt_path) as f:
+                    file_text = f.read().strip()
+                if len(file_text) > len(text):
+                    text = file_text
+                os.unlink(txt_path)
+            model_name = "whisper.cpp base (74M)"
+        
         # Remove common artifacts
         for artifact in ["[BLANK_AUDIO]", "[музыка]", "[ Music ]", "[MUSIC]"]:
             text = text.replace(artifact, "")
@@ -1083,25 +1107,16 @@ async def speech_to_text(request: dict):
         if wav_path != tmp_path:
             os.unlink(wav_path)
         
-        # Also try to read the .txt file whisper may have created
-        txt_path = wav_path + ".txt"
-        if os.path.exists(txt_path):
-            with open(txt_path) as f:
-                file_text = f.read().strip()
-            if len(file_text) > len(text):
-                text = file_text
-            os.unlink(txt_path)
-        
         return {
             "text": text,
             "language": language,
             "confidence": 0.9 if text else 0.0,
             "vad": vad_result,
-            "model": "whisper.cpp base (74M)",
-            "vad_model": "Silero VAD (ONNX)"
+            "model": model_name,
+            "vad_model": "Energy VAD"
         }
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="whisper.cpp timeout (30s)")
+        raise HTTPException(status_code=504, detail="whisper timeout (30s)")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"STT error: {str(e)}")
 
@@ -1128,31 +1143,50 @@ async def speech_to_text_file(file: UploadFile = None):
         # VAD check
         vad_result = _silero_vad_check(wav_path)
         if not vad_result["has_speech"]:
+            for p in [tmp_path, wav_path]:
+                if os.path.exists(p): os.unlink(p)
             return {"text": "", "vad": vad_result, "note": "No speech detected"}
         
-        # whisper.cpp
-        result = subprocess.run(
-            [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", "auto", "-f", wav_path,
-             "--no-timestamps", "-t", "4"],
-            capture_output=True, text=True, timeout=30
-        )
+        # Transcription
+        use_fw = not (os.path.exists(WHISPER_CLI) and os.path.exists(WHISPER_MODEL))
+        text = ""
+        model_used = ""
         
-        text = result.stdout.strip()
+        if use_fw:
+            from faster_whisper import WhisperModel
+            fw_model = WhisperModel("base", device="cpu", compute_type="int8")
+            segments, info = fw_model.transcribe(wav_path)
+            text = " ".join(s.text for s in segments).strip()
+            model_used = "faster_whisper base (CPU)"
+        else:
+            result = subprocess.run(
+                [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", "auto", "-f", wav_path,
+                 "--no-timestamps", "-t", "4"],
+                capture_output=True, text=True, timeout=30
+            )
+            text = result.stdout.strip()
+            model_used = "whisper.cpp base"
         
         # Cleanup
         for p in [tmp_path, wav_path]:
-            if os.path.exists(p):
-                os.unlink(p)
+            if os.path.exists(p): os.unlink(p)
         
-        return {"text": text, "vad": vad_result, "model": "whisper.cpp base"}
+        return {"text": text, "vad": vad_result, "model": model_used}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/voice/status")
 async def voice_status():
-    """Check whisper.cpp + Silero VAD availability."""
+    """Check STT + VAD availability (whisper.cpp OR faster_whisper)."""
     whisper_ok = os.path.exists(WHISPER_CLI) and os.path.exists(WHISPER_MODEL)
+    fw_ok = False
+    if not whisper_ok:
+        try:
+            from faster_whisper import WhisperModel
+            fw_ok = True
+        except ImportError:
+            pass
     silero_ok = os.path.exists(SILERO_VAD_MODEL)
     onnx_ok = False
     if silero_ok:
@@ -1163,7 +1197,8 @@ async def voice_status():
             pass
     
     return {
-        "stt_available": whisper_ok,
+        "stt_available": whisper_ok or fw_ok,
+        "stt_engine": "whisper.cpp" if whisper_ok else ("faster_whisper" if fw_ok else "none"),
         "vad_available": silero_ok,
         "onnx_runtime": onnx_ok,
         "whisper_cli": WHISPER_CLI,

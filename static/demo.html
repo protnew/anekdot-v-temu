@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Анекдот в Тему v3.7.0</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:#121212;color:#fff;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+.header{padding:12px 16px;background:#1e1e1e;border-bottom:1px solid #333;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:18px}
+.header span{color:#4CAF50;font-size:12px}
+.tab-bar{display:flex;background:#1a1a1a;border-top:1px solid #333}
+.tab{flex:1;text-align:center;padding:10px 4px;color:#666;font-size:11px;cursor:pointer;border-top:2px solid transparent}
+.tab.active{color:#4CAF50;border-top-color:#4CAF50}
+.tab .icon{font-size:22px;display:block;margin-bottom:2px}
+.page{flex:1;overflow-y:auto;display:none;padding:16px}
+.page.active{display:block}
+
+/* Voice page */
+.voice-center{text-align:center;padding-top:30px}
+.voice-title{font-size:24px;font-weight:700;margin-bottom:6px}
+.voice-sub{color:#888;font-size:13px;margin-bottom:24px}
+.voice-status{color:#4CAF50;font-size:15px;font-weight:500;min-height:24px;margin-bottom:16px}
+.transcription{color:#90A4AE;font-style:italic;padding:8px 16px;margin:12px 0;display:none}
+
+.joke-card{background:#1e1e1e;border:2px solid #4CAF50;border-radius:16px;padding:20px;text-align:left;display:none;margin:16px 0}
+.joke-cat{color:#4CAF50;font-size:12px;font-weight:700;margin-bottom:8px}
+.joke-text{font-size:17px;line-height:1.6}
+
+.mic-btn{width:80px;height:80px;border-radius:50%;border:none;cursor:pointer;font-size:36px;display:flex;align-items:center;justify-content:center;margin:20px auto;transition:.2s;box-shadow:0 4px 20px rgba(76,175,80,.3)}
+.mic-btn.off{background:#4CAF50}
+.mic-btn.on{background:#f44336;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+
+/* Joke page */
+.joke-box{background:#1e1e1e;border-radius:16px;padding:24px;margin-bottom:16px}
+.joke-box .cat{color:#4CAF50;font-size:12px;font-weight:700}
+.joke-box .text{font-size:18px;line-height:1.6;margin-top:10px}
+.joke-box .meta{color:#666;font-size:12px;margin-top:10px}
+.btn{background:#4CAF50;color:#fff;border:none;padding:14px 32px;border-radius:12px;font-size:16px;cursor:pointer;width:100%;font-weight:600}
+.btn:active{opacity:.8}
+
+/* Categories */
+.cat-item{display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #222}
+.cat-item .name{color:#fff}
+.cat-item .count{color:#4CAF50;font-weight:600}
+
+/* Demo banner */
+.demo-banner{background:#FF9800;color:#000;padding:6px 12px;font-size:11px;text-align:center;font-weight:600}
+
+/* Logs */
+.logs{background:#0a0a0a;border-radius:8px;padding:8px;margin-top:12px;max-height:120px;overflow-y:auto;font-family:monospace;font-size:10px;color:#4CAF50}
+</style>
+</head>
+<body>
+
+<div class="demo-banner" id="banner">📱 Демо — сервер запущен! Кнопки работают с реальным API (localhost:8000)</div>
+
+<div class="header">
+  <h1>😂 Анекдот в Тему</h1>
+  <span>v3.7.0 • 200K шуток</span>
+</div>
+
+<!-- Pages -->
+<div class="page active" id="page-voice">
+  <div class="voice-center">
+    <div class="voice-title">🎤 Голосовой режим</div>
+    <div class="voice-sub">Скажите что-нибудь — я найду шутку!</div>
+    <div class="voice-status" id="status">Нажмите 🎤 чтобы начать</div>
+    <div class="transcription" id="transcription"></div>
+    <div class="joke-card" id="jokeCard">
+      <div class="joke-cat" id="jokeCat"></div>
+      <div class="joke-text" id="jokeText"></div>
+    </div>
+    <div class="logs" id="logs" style="display:none"></div>
+  </div>
+  <div style="flex:1"></div>
+  <div style="text-align:center;padding:16px">
+    <button class="mic-btn off" id="micBtn" onclick="toggleMic()">🎤</button>
+    <div style="color:#666;font-size:11px;margin-top:4px">5 сек запись</div>
+  </div>
+</div>
+
+<div class="page" id="page-random">
+  <div id="randomJoke"></div>
+  <button class="btn" onclick="showRandom()" style="margin-top:16px">🎲 Другая шутка</button>
+</div>
+
+<div class="page" id="page-cats">
+  <h2 style="margin-bottom:16px">📂 Категории</h2>
+  <div id="catList"></div>
+</div>
+
+<div class="page" id="page-about">
+  <h2 style="margin-bottom:16px">ℹ️ О приложении</h2>
+  <div style="color:#aaa;line-height:1.8">
+    <p><b style="color:#fff">Анекдот в Тему v3.7.0</b></p>
+    <p>📊 200,000 шуток в базе</p>
+    <p>📂 132 категории</p>
+    <p>🌍 10 языков (RU, EN, ES, DE, FR, PT, ZH, JA, AR, HI)</p>
+    <p>🎤 whisper.cpp STT (74MB, 99 языков)</p>
+    <p>🔍 TF-IDF семантический поиск</p>
+    <p>😂 AI генерация шуток (OpenAI)</p>
+    <p>🛡️ Модерация контента</p>
+    <br>
+    <p><b style="color:#fff">Flutter:</b> Android + Web + Desktop</p>
+    <p><b style="color:#fff">GitHub:</b> protnew/anekdot-v-temu</p>
+    <br>
+    <p style="color:#FF9800">⚠️ Это демо. Для голоса нужен запущенный сервер.</p>
+    <p style="color:#FF9800">В продакшене: VPS (~500₽/мес) + домен (~200₽/год)</p>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('voice',this)"><span class="icon">🎤</span>Голос</div>
+  <div class="tab" onclick="switchTab('random',this)"><span class="icon">🎲</span>Случайная</div>
+  <div class="tab" onclick="switchTab('cats',this)"><span class="icon">📂</span>Категории</div>
+  <div class="tab" onclick="switchTab('about',this)"><span class="icon">ℹ️</span>О</div>
+</div>
+
+<script>
+// Demo jokes database
+const DEMO_JOKES = [
+  {cat:"работа",text:"Начальник вызывает программиста:\n— Ты почему в штанах на работу пришёл?!\n— Так джинсы же...\n— Какие джинсы?! Ты в штанах от костюма, я же вижу — пуговицы рядом!",rating:4.2},
+  {cat:"IT",text:"Жена программиста:\n— Купи батон хлеба. Если будут яйца — возьми десяток.\nПрограммист вернулся с 10 батонами.\n— Яйца были!",rating:4.5},
+  {cat:"семья",text:"— Дорогой, я беременна!\n— Не может быть, мы же предохранялись!\n— Ну вот поэтому и не может быть — предохранялись-то ты, а не я.",rating:3.8},
+  {cat:"кафе",text:"Два друга в кафе:\n— Мне, пожалуйста, кофе без сахара.\n— А мне с сахаром, но без кофе.\nОфициант:\n— Без кофе — это вода с сахаром?\n— Нет, просто принесите счёт.",rating:4.1},
+  {cat:"разное",text:"— Доктор, я буду жить?\n— А смысл?",rating:4.7},
+  {cat:"анекдот",text:"Мужик приходит к врачу:\n— Доктор, мне кажется, что я мотылёк.\n— Так вам не ко мне, вам к психиатру!\n— Я знаю.\n— А зачем тогда ко мне пришли?\n— А у вас свет горел.",rating:4.8},
+  {cat:"работа",text:"На собеседовании:\n— Назовите вашу слабую сторону.\n— Я правильно угадываю следующие реплики людей.\n— Ух ты! Можете привести пример?\n— Вы хотите, чтобы я работал бесплатно.",rating:4.3},
+  {cat:"кафе",text:"Официант, в моём супе муха!\n— Не волнуйтесь, паук в вашем салате с ней разберётся.",rating:4.0},
+  {cat:"семья",text:"Жена мужу:\n— Я ухожу к маме!\n— Я с тобой! Давно хотел посмотреть, кто тебя терпел до меня.",rating:3.9},
+  {cat:"IT",text:"Почему программисты путают Хэллоуин и Рождество?\nПотому что OCT 31 = DEC 25.",rating:4.6},
+  {cat:"разное",text:"Встречаются два друга:\n— Ты знаешь, я вчера купил такие умные часы!\n— И что?\n— Они показывают, что я идиот, который потратил 40 тысяч на часы.",rating:4.1},
+  {cat:"работа",text:"Самый короткий анекдот про работу:\nПонедельник.",rating:4.9},
+];
+
+const DEMO_CATS = {работа:18762,IT:8234,семья:15201,кафе:3456,разное:22340,анекдот:12000,деньги:9876,здоровье:6543,учёба:4321,политика:8765,отношения:13456,спорт:5678,дети:7890,мужчины:6543,женщины:7654,студенты:5432,евреи:4321,новые русские:3456,блондинки:4567,Вовочка:5678,тёща:2345,армия:3456,школа:4567,английские:8765,испанские:10000,немецкие:8200,французские:8000,португальские:5050,китайские:3220,японские:3220,арабские:3220,хинди:3220};
+
+let isListening = false;
+let apiAvailable = false;
+let baseUrl = '';
+
+// Check if API is reachable
+async function checkApi() {
+  const urls = ['http://localhost:8000', 'http://192.168.0.150:8000', window.location.origin];
+  for (const url of urls) {
+    try {
+      const r = await fetch(url + '/api/stats', {signal: AbortSignal.timeout(2000)});
+      if (r.ok) { baseUrl = url; apiAvailable = true; log('✅ API: ' + url); return; }
+    } catch(e) {}
+  }
+  log('⚠️ API не найден — демо режим');
+}
+
+function log(msg) {
+  const el = document.getElementById('logs');
+  el.style.display = 'block';
+  const t = new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  el.innerHTML += `[${t}] ${msg}<br>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+}
+
+async function showRandom() {
+  if (apiAvailable) {
+    try {
+      const r = await fetch(baseUrl + '/api/joke/random');
+      const j = await r.json();
+      document.getElementById('randomJoke').innerHTML =
+        `<div class="joke-box"><div class="cat">${(j.category||'').toUpperCase()}</div><div class="text">${(j.text||'').replace(/\n/g,'<br>')}</div><div class="meta">⭐ ${j.rating||'—'} · #${j.id||''}</div></div>`;
+      return;
+    } catch(e) { log('⚠️ API error, fallback to demo'); }
+  }
+  const j = DEMO_JOKES[Math.floor(Math.random()*DEMO_JOKES.length)];
+  document.getElementById('randomJoke').innerHTML =
+    `<div class="joke-box"><div class="cat">${j.cat.toUpperCase()}</div><div class="text">${j.text.replace(/\n/g,'<br>')}</div><div class="meta">⭐ ${j.rating}</div></div>`;
+}
+
+async function showCategories() {
+  if (apiAvailable) {
+    try {
+      const r = await fetch(baseUrl + '/api/categories');
+      const cats = await r.json();
+      const el = document.getElementById('catList');
+      el.innerHTML = Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
+        `<div class="cat-item"><span class="name">${k}</span><span class="count">${v.toLocaleString('ru')}</span></div>`
+      ).join('');
+      return;
+    } catch(e) { log('⚠️ API error, fallback to demo'); }
+  }
+  const el = document.getElementById('catList');
+  el.innerHTML = Object.entries(DEMO_CATS).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
+    `<div class="cat-item"><span class="name">${k}</span><span class="count">${v.toLocaleString('ru')}</span></div>`
+  ).join('');
+}
+
+async function toggleMic() {
+  const btn = document.getElementById('micBtn');
+  const status = document.getElementById('status');
+
+  if (isListening) { isListening = false; btn.className='mic-btn off'; btn.textContent='🎤'; status.textContent='Остановлено'; return; }
+
+  // Try real microphone if API available
+  if (apiAvailable && navigator.mediaDevices) {
+    await realVoicePipeline();
+    return;
+  }
+
+  // DEMO: simulate voice pipeline
+  isListening = true;
+  btn.className='mic-btn on'; btn.textContent='⏹️';
+  document.getElementById('jokeCard').style.display='none';
+  document.getElementById('transcription').style.display='none';
+
+  status.textContent = '🎙️ Слушаю...';
+  log('🎤 Recording...');
+
+  await sleep(2000);
+  status.textContent = '👂 Речь обнаружена!';
+  log('👂 Speech detected');
+  await sleep(1000);
+
+  const demoTexts = [
+    'два друга сидят в кафе',
+    'программист пришёл на работу',
+    'жена говорит мужу',
+    'доктор осматривает пациента',
+    'собеседование на новую работу',
+  ];
+  const text = demoTexts[Math.floor(Math.random()*demoTexts.length)];
+
+  status.textContent = '📝 Распознаю речь...';
+  log('📝 Transcribed: "' + text + '"');
+  await sleep(1500);
+
+  document.getElementById('transcription').textContent = '"' + text + '"';
+  document.getElementById('transcription').style.display = 'block';
+
+  status.textContent = '😄 Ищу шутку...';
+  log('🔍 Searching jokes...');
+  await sleep(1000);
+
+  // Find best matching joke
+  const words = text.split(' ');
+  let best = null, bestScore = 0;
+  for (const j of DEMO_JOKES) {
+    const score = words.filter(w => j.text.includes(w) || j.cat.includes(w)).length;
+    if (score > bestScore) { bestScore = score; best = j; }
+  }
+  if (!best) best = DEMO_JOKES[Math.floor(Math.random()*DEMO_JOKES.length)];
+
+  document.getElementById('jokeCat').textContent = '😂 ' + best.cat.toUpperCase();
+  document.getElementById('jokeText').innerHTML = best.text.replace(/\n/g,'<br>');
+  document.getElementById('jokeCard').style.display = 'block';
+  status.textContent = '😂 Вот шутка!';
+  log('😂 Found joke: ' + best.cat);
+
+  isListening = false;
+  btn.className='mic-btn off'; btn.textContent='🎤';
+}
+
+async function realVoicePipeline() {
+  const btn = document.getElementById('micBtn');
+  const status = document.getElementById('status');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    const recorder = new MediaRecorder(stream);
+    const chunks = [];
+    recorder.ondataavailable = e => chunks.push(e.data);
+
+    isListening = true;
+    btn.className='mic-btn on'; btn.textContent='⏹️';
+    status.textContent = '🎙️ Слушаю...';
+    log('🎤 Real mic recording...');
+
+    recorder.start();
+    await sleep(5000);
+    recorder.stop();
+    stream.getTracks().forEach(t=>t.stop());
+
+    await new Promise(r => recorder.onstop = r);
+    isListening = false;
+    btn.className='mic-btn off'; btn.textContent='🎤';
+
+    const blob = new Blob(chunks, {type:'audio/webm'});
+    const fd = new FormData();
+    fd.append('file', blob, 'voice.webm');
+
+    status.textContent = '📝 Распознаю (whisper.cpp)...';
+    log('📡 Sending to API...');
+    const sttResp = await fetch(baseUrl+'/api/voice/stt/file', {method:'POST', body:fd});
+    const sttData = await sttResp.json();
+    const text = sttData.text || '';
+    log('📝 "' + text + '"');
+
+    if (!text || ['[BLANK_AUDIO]','[музыка]'].includes(text)) {
+      status.textContent = '🤷 Не распознано. Попробуйте ещё.';
+      return;
+    }
+
+    document.getElementById('transcription').textContent = '"' + text + '"';
+    document.getElementById('transcription').style.display = 'block';
+    status.textContent = '😄 Ищу шутку...';
+
+    const jokeResp = await fetch(baseUrl+'/api/jokes/context', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text, count:3})
+    });
+    const jokeData = await jokeResp.json();
+    const jokes = jokeData.jokes || [];
+    if (jokes.length) {
+      const j = jokes[0];
+      document.getElementById('jokeCat').textContent = '😂 ' + (j.category||'');
+      document.getElementById('jokeText').textContent = j.text;
+      document.getElementById('jokeCard').style.display = 'block';
+      status.textContent = '😂 Вот шутка!';
+      log('😂 ' + j.text.substring(0,60) + '...');
+    } else {
+      status.textContent = '🤷 Не нашёл шутку';
+    }
+  } catch(e) {
+    status.textContent = '❌ ' + e.message;
+    log('❌ ' + e.message);
+    isListening = false;
+    btn.className='mic-btn off'; btn.textContent='🎤';
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Init
+showRandom();
+showCategories();
+checkApi();
+</script>
+</body>
+</html>
