@@ -11,11 +11,21 @@ import json, os, random, hashlib, time, subprocess, tempfile, struct, base64
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 from moderation import ProfanityFilter, SpamDetector, ContentModerator
 
 app = FastAPI(title="Анекдот в тему", version="3.7.0")
+
+# Allow CORS for local development (emulator from file://)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -395,6 +405,11 @@ async def index():
 @app.get("/logs", response_class=HTMLResponse)
 async def logs_page():
     html_path = BASE_DIR / "static" / "logs.html"
+    return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
+
+@app.get("/emulator", response_class=HTMLResponse)
+async def emulator_page():
+    html_path = BASE_DIR / "static" / "emulator.html"
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 @app.get("/api/categories")
