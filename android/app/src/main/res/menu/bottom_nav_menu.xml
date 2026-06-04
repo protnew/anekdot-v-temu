@@ -20,4 +20,8 @@
         android:id="@+id/topFragment"
         android:icon="@drawable/ic_trophy"
         android:title="@string/tab_top" />
+    <item
+        android:id="@+id/voiceFragment"
+        android:icon="@android:drawable/ic_btn_speak_now"
+        android:title="@string/tab_voice" />
 </menu>

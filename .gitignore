@@ -41,3 +41,10 @@ data/jokes_db_backup_*.json
 .coverage
 htmlcov/
 
+
+# Large binary files (download separately)
+docker/models/*.bin
+docker/models/*.onnx
+docker/bin/whisper-cli
+docker/lib/*.so
+*.apk

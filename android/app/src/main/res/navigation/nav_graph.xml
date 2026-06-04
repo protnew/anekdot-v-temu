@@ -29,4 +29,9 @@
         android:name="com.anekdot.vtemu.ui.top.TopFragment"
         android:label="@string/tab_top" />
 
+    <fragment
+        android:id="@+id/voiceFragment"
+        android:name="com.anekdot.vtemu.ui.voice.VoiceFragment"
+        android:label="@string/tab_voice" />
+
 </navigation>

@@ -1,20 +1,21 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.6.0
+"""Анекдот в тему — AI-powered contextual joke app v3.7.0
 - TF-IDF semantic search
-- OpenAI LLM joke generation  
+- whisper.cpp local STT (74MB, 99 langs)
+- Silero VAD voice activity detection (300KB)
 - 200K jokes, 132 categories, 10 languages
 - SQLite storage
 - User CRUD, analytics, social, personalization
 - PWA, multi-language, moderation
 """
-import json, os, random, hashlib, time
+import json, os, random, hashlib, time, subprocess, tempfile, struct, base64
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from moderation import ProfanityFilter, SpamDetector, ContentModerator
 
-app = FastAPI(title="Анекдот в тему", version="3.6.0")
+app = FastAPI(title="Анекдот в тему", version="3.7.0")
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -954,12 +955,208 @@ def api_post(path, data):
 
 
 # ============================================================
-# #29: Voice endpoints (TTS/STT stubs)
+# #29: Voice endpoints — whisper.cpp + Silero VAD
 # ============================================================
+
+# Paths for whisper.cpp (set via env or defaults)
+WHISPER_CLI = os.environ.get("WHISPER_CLI_PATH", "/usr/local/bin/whisper-cli")
+WHISPER_MODEL = os.environ.get("WHISPER_MODEL_PATH", str(BASE_DIR / "docker" / "models" / "ggml-base.bin"))
+SILERO_VAD_MODEL = os.environ.get("SILERO_VAD_PATH", str(BASE_DIR / "docker" / "models" / "silero_vad.onnx"))
+
+def _silero_vad_check(wav_path: str, threshold: float = 0.5) -> dict:
+    """Check if WAV contains speech using Silero VAD (ONNX) or energy fallback.
+    Returns {has_speech: bool, speech_prob: float, duration_sec: float}"""
+    try:
+        import numpy as np
+        import wave
+        # Read WAV properly using wave module (handles variable headers)
+        with wave.open(wav_path, 'rb') as wf:
+            n_frames = wf.getnframes()
+            raw = wf.readframes(n_frames)
+            sr = wf.getframerate()
+        samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        duration = float(len(samples) / sr)
+
+        # Try ONNX-based Silero VAD
+        try:
+            import onnxruntime as ort
+            if not os.path.exists(SILERO_VAD_MODEL):
+                raise FileNotFoundError(f"Silero VAD model not found: {SILERO_VAD_MODEL}")
+
+            sess = ort.InferenceSession(SILERO_VAD_MODEL)
+            input_name = sess.get_inputs()[0].name
+            # Silero expects chunks of 512 samples at 16kHz
+            chunk_size = 512
+            speech_probs = []
+            for i in range(0, len(samples) - chunk_size, chunk_size):
+                chunk = samples[i:i + chunk_size].reshape(1, -1).astype(np.float32)
+                result = sess.run(None, {input_name: chunk})
+                # Force python float conversion (avoid numpy scalar issues)
+                prob_val = result[0].flatten()[0]
+                speech_probs.append(float(np.float64(prob_val)))
+
+            max_prob = float(max(speech_probs)) if speech_probs else 0.0
+            return {"has_speech": bool(max_prob >= threshold), "speech_prob": max_prob, "duration_sec": duration}
+        except Exception as e:
+            # Fallback: simple energy-based VAD
+            rms = float(np.sqrt(np.mean(samples ** 2)))
+            prob = min(rms * 10.0, 1.0)
+            return {"has_speech": bool(prob >= threshold), "speech_prob": prob, "duration_sec": duration, "vad_fallback": str(e)}
+    except Exception as e:
+        return {"has_speech": True, "speech_prob": -1.0, "duration_sec": 0.0, "error": str(e)}
+
+
 @app.post("/api/voice/stt")
 async def speech_to_text(request: dict):
-    """Stub for speech-to-text. Returns text for processing."""
-    return {"text": request.get("text", ""), "note": "In production, use Whisper API for real STT"}
+    """Real speech-to-text using whisper.cpp (local, no API needed).
+    Input: {audio_base64: str, format: 'wav'|'webm'|'ogg', language: 'ru'|'en'|...}
+    Output: {text: str, language: str, confidence: float, vad: dict}
+    """
+    audio_b64 = request.get("audio_base64", "")
+    audio_format = request.get("format", "wav")
+    language = request.get("language", "ru")
+    
+    if not audio_b64:
+        raise HTTPException(status_code=400, detail="audio_base64 is required")
+    
+    # Validate whisper-cli exists
+    if not os.path.exists(WHISPER_CLI):
+        raise HTTPException(status_code=500, detail=f"whisper-cli not found at {WHISPER_CLI}")
+    if not os.path.exists(WHISPER_MODEL):
+        raise HTTPException(status_code=500, detail=f"Whisper model not found at {WHISPER_MODEL}")
+    
+    try:
+        # Decode base64 → temp WAV file
+        audio_bytes = base64.b64decode(audio_b64)
+        with tempfile.NamedTemporaryFile(suffix=f".{audio_format}", delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+        
+        # Convert to 16kHz WAV if needed (whisper.cpp needs PCM WAV)
+        wav_path = tmp_path
+        if audio_format != "wav":
+            wav_path = tmp_path + ".wav"
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
+                capture_output=True, timeout=10
+            )
+        
+        # Step 1: Silero VAD — check if there's actual speech
+        vad_result = _silero_vad_check(wav_path)
+        if not vad_result["has_speech"]:
+            os.unlink(tmp_path)
+            if wav_path != tmp_path:
+                os.unlink(wav_path)
+            return {"text": "", "language": language, "confidence": 0.0, "vad": vad_result, "note": "No speech detected"}
+        
+        # Step 2: whisper.cpp transcription
+        result = subprocess.run(
+            [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", language, "-f", wav_path,
+             "--no-timestamps", "-t", "4", "--output-txt"],
+            capture_output=True, text=True, timeout=30
+        )
+        
+        # Parse output — whisper-cli prints text to stdout
+        text = result.stdout.strip()
+        # Remove common artifacts
+        for artifact in ["[BLANK_AUDIO]", "[музыка]", "[ Music ]", "[MUSIC]"]:
+            text = text.replace(artifact, "")
+        text = text.strip()
+        
+        # Cleanup temp files
+        os.unlink(tmp_path)
+        if wav_path != tmp_path:
+            os.unlink(wav_path)
+        
+        # Also try to read the .txt file whisper may have created
+        txt_path = wav_path + ".txt"
+        if os.path.exists(txt_path):
+            with open(txt_path) as f:
+                file_text = f.read().strip()
+            if len(file_text) > len(text):
+                text = file_text
+            os.unlink(txt_path)
+        
+        return {
+            "text": text,
+            "language": language,
+            "confidence": 0.9 if text else 0.0,
+            "vad": vad_result,
+            "model": "whisper.cpp base (74M)",
+            "vad_model": "Silero VAD (ONNX)"
+        }
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="whisper.cpp timeout (30s)")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"STT error: {str(e)}")
+
+
+@app.post("/api/voice/stt/file")
+async def speech_to_text_file(file: UploadFile = None):
+    """Upload audio file for STT. Accepts WAV/MP3/OGG/FLAC."""
+    if not file:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+    
+    suffix = Path(file.filename).suffix if file.filename else ".wav"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+    
+    try:
+        # Convert to 16kHz WAV
+        wav_path = tmp_path + ".wav"
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
+            capture_output=True, timeout=10
+        )
+        
+        # VAD check
+        vad_result = _silero_vad_check(wav_path)
+        if not vad_result["has_speech"]:
+            return {"text": "", "vad": vad_result, "note": "No speech detected"}
+        
+        # whisper.cpp
+        result = subprocess.run(
+            [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", "auto", "-f", wav_path,
+             "--no-timestamps", "-t", "4"],
+            capture_output=True, text=True, timeout=30
+        )
+        
+        text = result.stdout.strip()
+        
+        # Cleanup
+        for p in [tmp_path, wav_path]:
+            if os.path.exists(p):
+                os.unlink(p)
+        
+        return {"text": text, "vad": vad_result, "model": "whisper.cpp base"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/voice/status")
+async def voice_status():
+    """Check whisper.cpp + Silero VAD availability."""
+    whisper_ok = os.path.exists(WHISPER_CLI) and os.path.exists(WHISPER_MODEL)
+    silero_ok = os.path.exists(SILERO_VAD_MODEL)
+    onnx_ok = False
+    if silero_ok:
+        try:
+            import onnxruntime
+            onnx_ok = True
+        except ImportError:
+            pass
+    
+    return {
+        "stt_available": whisper_ok,
+        "vad_available": silero_ok,
+        "onnx_runtime": onnx_ok,
+        "whisper_cli": WHISPER_CLI,
+        "whisper_model": WHISPER_MODEL,
+        "silero_vad": SILERO_VAD_MODEL,
+        "whisper_model_size": f"{os.path.getsize(WHISPER_MODEL) // 1024 // 1024}MB" if os.path.exists(WHISPER_MODEL) else "not found",
+        "silero_vad_size": f"{os.path.getsize(SILERO_VAD_MODEL) // 1024}KB" if os.path.exists(SILERO_VAD_MODEL) else "not found",
+    }
 
 @app.post("/api/voice/tts")
 async def text_to_speech(request: dict):

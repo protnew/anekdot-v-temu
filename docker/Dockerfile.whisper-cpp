@@ -1,0 +1,50 @@
+# ============================================================
+# Анекдот в Тему v3.6.0 — Docker с whisper.cpp + Silero VAD
+# Целевой размер: ~395 MB
+# ============================================================
+FROM python:3.12-slim AS base
+
+# Системные зависимости
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# ============================================================
+# Stage 1: Python зависимости
+# ============================================================
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir onnxruntime
+
+# ============================================================
+# Stage 2: whisper.cpp (предварительно скомпилированный)
+# ============================================================
+COPY --chmod=755 docker/bin/whisper-cli /usr/local/bin/whisper-cli
+COPY --chmod=755 docker/lib/libwhisper.so /usr/local/lib/libwhisper.so
+RUN ldconfig
+
+# GGML модель — base (142 MB)
+COPY docker/models/ggml-base.bin /app/models/ggml-base.bin
+
+# Silero VAD (300 KB)
+COPY docker/models/silero_vad.onnx /app/models/silero_vad.onnx
+
+# ============================================================
+# Stage 3: Application
+# ============================================================
+COPY . .
+
+ENV WHISPER_MODEL_PATH=/app/models/ggml-base.bin
+ENV SILERO_VAD_PATH=/app/models/silero_vad.onnx
+ENV WHISPER_CLI_PATH=/usr/local/bin/whisper-cli
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/stats')" || exit 1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

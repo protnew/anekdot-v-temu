@@ -22,6 +22,7 @@
     <string name="generate">Сгенерировать</string>
     <string name="jokes_count_total">%d шуток в базе</string>
     <string name="tab_top">Топ</string>
+    <string name="tab_voice">🎤 Голос</string>
     <string name="top_empty">Топ пока пуст</string>
     <string name="copied">Скопировано</string>
     <string name="generate_hint">Тема для генерации…</string>

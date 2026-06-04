@@ -17,6 +17,12 @@ class AnekdotApp : Application() {
     lateinit var anekdotApi: com.anekdot.vtemu.api.AnekdotApi
         private set
 
+    lateinit var repository: com.anekdot.vtemu.repository.AnekdotRepository
+        private set
+
+    lateinit var baseUrl: String
+        private set
+
     override fun onCreate() {
         super.onCreate()
 
@@ -39,7 +45,7 @@ class AnekdotApp : Application() {
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
 
-        val baseUrl = if (BuildConfig.DEBUG) {
+        baseUrl = if (BuildConfig.DEBUG) {
             BuildConfig.BASE_URL
         } else {
             "https://api.anekdot-vtemu.ru"
@@ -52,6 +58,7 @@ class AnekdotApp : Application() {
             .build()
 
         anekdotApi = retrofit.create(com.anekdot.vtemu.api.AnekdotApi::class.java)
+        repository = com.anekdot.vtemu.repository.AnekdotRepository(anekdotApi)
     }
 
     companion object {

@@ -234,6 +234,41 @@ def t25():
     assert r.status_code == 400
 test("Validation errors", t25)
 
+# Test 26: Voice status endpoint
+def t26():
+    r = client.get("/api/voice/status")
+    assert r.status_code == 200
+    data = r.json()
+    assert "stt_available" in data
+    assert "vad_available" in data
+test("Voice status endpoint", t26)
+
+# Test 27: STT without audio (should 400)
+def t27():
+    r = client.post("/api/voice/stt", json={})
+    assert r.status_code == 400
+test("STT empty request → 400", t27)
+
+# Test 28: STT with real whisper.cpp (generates test WAV)
+def t28():
+    import subprocess, tempfile, base64, os
+    # Generate a 3-second test WAV with sine wave
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp_wav = tmp.name
+    subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+                     "-ar", "16000", "-ac", "1", tmp_wav], capture_output=True)
+    with open(tmp_wav, "rb") as f:
+        audio_b64 = base64.b64encode(f.read()).decode()
+    os.unlink(tmp_wav)
+    
+    r = client.post("/api/voice/stt", json={"audio_base64": audio_b64, "format": "wav", "language": "ru"})
+    assert r.status_code == 200
+    data = r.json()
+    assert "text" in data
+    assert "vad" in data
+    assert "model" in data
+test("STT with whisper.cpp", t28)
+
 print(f"\n{'='*40}")
 print(f"Results: {passed} passed, {failed} failed out of {passed+failed}")
 if failed == 0:

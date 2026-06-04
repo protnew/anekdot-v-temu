@@ -1,48 +1,32 @@
 version: "3.8"
 
 services:
-  # === Основной API сервер ===
-  api:
+  anekdot-api:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
-    container_name: anekdot-api
+      dockerfile: docker/Dockerfile.whisper-cpp
+    container_name: anekdot-v-temu
     ports:
-      - "${PORT:-8000}:8000"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - BASE_URL=http://localhost:${PORT:-8000}
-      - PORT=8000
+      - "8000:8000"
     volumes:
       - ../data:/app/data
-    restart: unless-stopped
+    environment:
+      - WHISPER_CLI_PATH=/usr/local/bin/whisper-cli
+      - WHISPER_MODEL_PATH=/app/models/ggml-base.bin
+      - SILERO_VAD_PATH=/app/models/silero_vad.onnx
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/stats')"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
     deploy:
       resources:
         limits:
           memory: 2G
-
-  # === Telegram бот ===
-  bot:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    container_name: anekdot-bot
-    command: ["python", "bot/telegram_bot.py"]
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - API_BASE=http://api:8000
-    volumes:
-      - ../data:/app/data
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
+          cpus: "2.0"
+        reservations:
           memory: 512M
+          cpus: "0.5"
