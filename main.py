@@ -609,13 +609,14 @@ async def random_joke(category: Optional[str] = Query(None), lang: Optional[str]
             return {**j, "category": category}
     
     # Filter categories by language
+    _FOREIGN = ("en_", "es_", "de_", "fr_", "pt_", "zh_", "ja_", "ar_", "hi_")
     if lang == "en":
         cats = [c for c in cats if c.startswith("en_")]
     elif lang and lang != "ru":
         cats = [c for c in cats if c.startswith(f"{lang}_")]
     else:
-        # Russian: exclude en_, es_, de_, fr_, pt_, zh_, ja_, ar_, hi_
-        cats = [c for c in cats if not (len(c) >= 2 and c[2:3] == "_")]
+        # Russian: exclude all foreign-prefixed categories
+        cats = [c for c in cats if not c.startswith(_FOREIGN)]
     
     if not cats:
         cats = list(db.keys())
@@ -626,6 +627,9 @@ async def random_joke(category: Optional[str] = Query(None), lang: Optional[str]
     if not jokes:
         cat = random.choice(list(db.keys()))
         jokes = db[cat]
+    
+    if not jokes:
+        raise HTTPException(404, "No jokes found")
     
     j = random.choice(jokes)
     return {**j, "category": cat}
@@ -1293,6 +1297,8 @@ async def text_to_speech(request: dict):
 @app.get("/data/tts/{filename}")
 async def serve_tts_file(filename: str):
     """Serve generated TTS audio files."""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "Invalid filename")
     from fastapi.responses import FileResponse
     fpath = BASE_DIR / "data" / "tts" / filename
     if fpath.exists():
@@ -1419,5 +1425,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"Запуск Анекдот в тему v3.5 на http://localhost:{port}")
+    print(f"Запуск Анекдот в тему v3.8.0 на http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
