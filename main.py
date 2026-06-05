@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from moderation import ProfanityFilter, SpamDetector, ContentModerator
 
-app = FastAPI(title="Анекдот в тему", version="3.7.0")
+app = FastAPI(title="Анекдот в тему", version="3.8.0")
 
 # Allow CORS for local development (emulator from file://)
 app.add_middleware(
@@ -587,12 +587,25 @@ async def rate_joke(request: RatingRequest):
     raise HTTPException(status_code=404, detail="Joke not found")
 
 @app.get("/api/joke/random")
-async def random_joke(category: Optional[str] = Query(None)):
+async def random_joke(category: Optional[str] = Query(None), lang: Optional[str] = Query(None)):
     jokes = search_engine.jokes
     if category:
         filtered = [j for j in jokes if j.get("category") == category]
         if filtered:
             return random.choice(filtered)
+    # Default: prioritize Russian jokes unless lang=en specified
+    if lang == "en":
+        en_jokes = [j for j in jokes if j.get("category", "").startswith("en_")]
+        if en_jokes:
+            return random.choice(en_jokes)
+    elif lang and lang != "ru":
+        lang_jokes = [j for j in jokes if j.get("category", "").startswith(f"{lang}_")]
+        if lang_jokes:
+            return random.choice(lang_jokes)
+    # Russian by default
+    ru_jokes = [j for j in jokes if not j.get("category", "").startswith("en_") and not j.get("category", "")[2:3] == "_"]
+    if ru_jokes:
+        return random.choice(ru_jokes)
     return random.choice(jokes)
 
 
@@ -1295,7 +1308,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.6.0"
+        "version": "3.8.0"
     }
 
 # ============================================================
@@ -1307,6 +1320,35 @@ async def landing():
     if landing_path.exists():
         return landing_path.read_text(encoding="utf-8")
     raise HTTPException(404, "Landing not found")
+
+@app.get("/desktop", response_class=HTMLResponse)
+async def desktop_page():
+    """Standalone desktop HTML — connects to API automatically."""
+    desktop_path = BASE_DIR / "static" / "standalone.html"
+    if desktop_path.exists():
+        return desktop_path.read_text(encoding="utf-8")
+    raise HTTPException(404, "Desktop page not found")
+
+# ============================================================
+# Flutter Web App
+# ============================================================
+@app.get("/flutter", response_class=HTMLResponse)
+async def flutter_app():
+    flutter_index = BASE_DIR / "static" / "flutter" / "index.html"
+    if flutter_index.exists():
+        return flutter_index.read_text(encoding="utf-8")
+    raise HTTPException(404, "Flutter app not found")
+
+# Mount static files (icons, CSS, etc.)
+from fastapi.staticfiles import StaticFiles
+_static_dir = BASE_DIR / "static"
+if _static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static_files")
+
+# Mount Flutter static assets (canvaskit, assets, icons, etc.)
+_flutter_dir = BASE_DIR / "static" / "flutter"
+if _flutter_dir.exists():
+    app.mount("/static/flutter", StaticFiles(directory=str(_flutter_dir)), name="flutter_static")
 
 # ============================================================
 # Moderation API

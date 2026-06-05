@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>😂 Анекдот в тему — Desktop</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f0f1a;
+  --card:#1a1a2e;
+  --accent:#e94560;
+  --accent-glow:rgba(233,69,96,.25);
+  --text:#eaeaea;
+  --text-dim:#8888aa;
+  --border:#2a2a3e;
+  --success:#4CAF50;
+  --danger:#f44336;
+  --warning:#FF9800;
+}
+html,body{font-family:'Segoe UI',-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--text);height:100%;overflow:hidden}
+body{display:flex;flex-direction:column}
+
+/* ===== No-connection screen ===== */
+.no-conn{display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px}
+.no-conn.show{display:flex}
+.no-conn h2{font-size:28px;margin-bottom:12px;color:var(--accent)}
+.no-conn p{color:var(--text-dim);max-width:420px;line-height:1.7;margin-bottom:8px}
+.no-conn code{background:var(--card);padding:4px 10px;border-radius:6px;font-size:14px;color:var(--accent)}
+.no-conn .retry-btn{margin-top:24px;background:var(--accent);color:#fff;border:none;padding:14px 40px;border-radius:12px;font-size:16px;cursor:pointer;font-weight:600;transition:.2s}
+.no-conn .retry-btn:hover{opacity:.85;transform:scale(1.03)}
+
+/* ===== Header ===== */
+.header{padding:14px 20px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header h1{font-size:18px;display:flex;align-items:center;gap:8px}
+.header .ver{color:var(--text-dim);font-size:12px;font-weight:400}
+.conn-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:10px;transition:background .3s}
+.conn-dot.on{background:var(--success)}
+.conn-dot.off{background:var(--danger)}
+
+/* ===== Tab bar ===== */
+.tab-bar{display:flex;background:var(--card);border-top:1px solid var(--border);flex-shrink:0}
+.tab{flex:1;text-align:center;padding:10px 4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;border-top:3px solid transparent;transition:.2s;user-select:none}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-top-color:var(--accent)}
+.tab .icon{font-size:22px;display:block;margin-bottom:2px}
+
+/* ===== Pages ===== */
+.pages{flex:1;overflow:hidden;position:relative}
+.page{position:absolute;inset:0;overflow-y:auto;padding:20px;display:none;-webkit-overflow-scrolling:touch}
+.page.active{display:block}
+
+/* ===== Cards / shared ===== */
+.card{background:var(--card);border-radius:16px;padding:20px;margin-bottom:16px;border:1px solid var(--border);transition:border-color .2s}
+.card:hover{border-color:rgba(233,69,96,.3)}
+.card .cat{color:var(--accent);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.card .text{font-size:17px;line-height:1.7;white-space:pre-wrap}
+.card .meta{color:var(--text-dim);font-size:12px;margin-top:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.card .meta .tag{background:rgba(233,69,96,.12);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:11px}
+.card .actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+
+/* ===== Buttons ===== */
+.btn{background:var(--accent);color:#fff;border:none;padding:14px 28px;border-radius:12px;font-size:15px;cursor:pointer;font-weight:600;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{opacity:.88;transform:translateY(-1px)}
+.btn:active{transform:scale(.97)}
+.btn-outline{background:transparent;border:2px solid var(--accent);color:var(--accent)}
+.btn-outline:hover{background:rgba(233,69,96,.1)}
+.btn-sm{padding:8px 16px;font-size:13px;border-radius:8px}
+.btn-icon{background:transparent;border:none;font-size:22px;cursor:pointer;padding:6px;border-radius:8px;transition:.15s}
+.btn-icon:hover{background:rgba(255,255,255,.06)}
+.btn-icon.faved{color:var(--accent)}
+.btn-big{width:100%;padding:20px;font-size:20px;border-radius:16px;letter-spacing:.3px;box-shadow:0 6px 30px var(--accent-glow)}
+
+/* ===== Input ===== */
+.input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:14px 16px;border-radius:12px;font-size:15px;outline:none;transition:border-color .2s;font-family:inherit}
+.input:focus{border-color:var(--accent)}
+.input::placeholder{color:var(--text-dim)}
+
+/* ===== Search ===== */
+.search-row{display:flex;gap:10px;margin-bottom:16px}
+.search-row .input{flex:1}
+.search-results{display:flex;flex-direction:column;gap:12px}
+
+/* ===== Categories ===== */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.cat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:.2s;display:flex;justify-content:space-between;align-items:center}
+.cat-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.cat-card .name{font-weight:600;font-size:14px}
+.cat-card .count{color:var(--accent);font-weight:700;font-size:16px;background:rgba(233,69,96,.1);padding:4px 12px;border-radius:20px;min-width:40px;text-align:center}
+
+/* ===== Context input ===== */
+.context-area{margin-bottom:20px}
+.context-area textarea{width:100%;min-height:80px;resize:vertical;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:14px;border-radius:12px;font-size:15px;font-family:inherit;outline:none;transition:border-color .2s}
+.context-area textarea:focus{border-color:var(--accent)}
+.context-area textarea::placeholder{color:var(--text-dim)}
+
+/* ===== Favorites ===== */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-dim)}
+.empty-state .emoji{font-size:64px;margin-bottom:16px}
+.empty-state h3{color:var(--text);margin-bottom:8px}
+
+/* ===== Settings ===== */
+.settings-group{margin-bottom:24px}
+.settings-group h3{font-size:14px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.setting-row{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.setting-row .input{flex:1}
+.status-line{font-size:13px;padding:8px 0;display:flex;align-items:center;gap:8px}
+.status-line .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.status-line .dot.green{background:var(--success)}
+.status-line .dot.red{background:var(--danger)}
+.status-line .dot.yellow{background:var(--warning)}
+
+/* ===== Loading spinner ===== */
+.spinner{display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{display:flex;align-items:center;justify-content:center;padding:40px;gap:12px;color:var(--text-dim);font-size:14px}
+
+/* ===== Joke reveal animation ===== */
+.joke-enter{animation:jokeIn .35s ease}
+@keyframes jokeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* ===== Toast ===== */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);color:var(--text);padding:12px 24px;border-radius:12px;font-size:14px;z-index:10000;border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.4);opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:1}
+
+/* ===== Responsive ===== */
+@media(max-width:600px){
+  .cat-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .header h1{font-size:16px}
+  .btn-big{font-size:17px;padding:16px}
+}
+@media(min-width:900px){
+  .pages{max-width:720px;margin:0 auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== No connection screen ===== -->
+<div class="no-conn show" id="noConnScreen">
+  <div style="font-size:80px;margin-bottom:16px">🔌</div>
+  <h2>Сервер не найден</h2>
+  <p>Для работы приложения нужен запущенный сервер <strong>Анекдот в тему</strong>.</p>
+  <p>Запустите его командой:</p>
+  <p style="margin:16px 0"><code>python main.py</code></p>
+  <p>или</p>
+  <p style="margin:16px 0"><code>python -m uvicorn main:app --host 127.0.0.1 --port 18788</code></p>
+  <button class="retry-btn" onclick="checkConnection()">🔄 Попробовать снова</button>
+</div>
+
+<!-- ===== Header ===== -->
+<div class="header">
+  <h1>😂 Анекдот в тему <span class="ver">Desktop v3.8</span></h1>
+  <span class="conn-dot off" id="connDot" title="Нет соединения"></span>
+</div>
+
+<!-- ===== Pages ===== -->
+<div class="pages">
+
+  <!-- Tab 1: 🎯 В тему -->
+  <div class="page" id="page-context">
+    <h2 style="margin-bottom:16px">🎯 Анекдот в тему</h2>
+    <div class="context-area">
+      <textarea id="contextInput" placeholder="Опишите ситуацию, и я подберу подходящий анекдот...&#10;&#10;Например: «сижу на работе, начальник орет»"></textarea>
+    </div>
+    <button class="btn" onclick="searchContext()" id="ctxBtn" style="width:100%">🎯 Найти в тему</button>
+    <div id="contextResults" style="margin-top:20px"></div>
+  </div>
+
+  <!-- Tab 2: 📂 Категории -->
+  <div class="page" id="page-cats">
+    <h2 style="margin-bottom:16px">📂 Категории</h2>
+    <div id="catGrid" class="cat-grid"></div>
+    <div id="catLoading" class="loading-overlay"><div class="spinner"></div> Загрузка категорий...</div>
+  </div>
+
+  <!-- Tab 3: 🎲 Случайный -->
+  <div class="page" id="page-random">
+    <div style="margin-bottom:24px">
+      <button class="btn btn-big" onclick="loadRandomJoke()">🎲 Случайный анекдот</button>
+    </div>
+    <div id="randomJokeArea"></div>
+  </div>
+
+  <!-- Tab 4: ❤️ Избранное -->
+  <div class="page" id="page-favs">
+    <h2 style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+      ❤️ Избранное
+      <button class="btn btn-sm btn-outline" onclick="clearFavorites()" id="clearFavsBtn" style="display:none">🗑 Очистить</button>
+    </h2>
+    <div id="favsList"></div>
+  </div>
+
+  <!-- Tab 5: ⚙️ Настройки -->
+  <div class="page" id="page-settings">
+    <h2 style="margin-bottom:20px">⚙️ Настройки</h2>
+
+    <div class="settings-group">
+      <h3>Подключение к серверу</h3>
+      <div class="setting-row">
+        <input type="text" class="input" id="serverUrlInput" placeholder="http://localhost:8788">
+        <button class="btn btn-sm" onclick="saveAndTestConnection()">💾 Сохранить</button>
+      </div>
+      <button class="btn btn-sm btn-outline" onclick="testConnection()" style="margin-bottom:12px">🔍 Проверить соединение</button>
+      <div class="status-line" id="connStatus">
+        <span class="dot yellow"></span> Не проверено
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h3>Поиск</h3>
+      <div class="search-row">
+        <input type="text" class="input" id="searchInput" placeholder="Поиск анекдотов..." onkeydown="if(event.key==='Enter')doSearch()">
+        <button class="btn btn-sm" onclick="doSearch()">🔍</button>
+      </div>
+      <div id="searchResults" class="search-results"></div>
+    </div>
+
+    <div class="settings-group">
+      <h3>О приложении</h3>
+      <div class="card">
+        <p><strong>😂 Анекдот в тему</strong> — Desktop v3.8</p>
+        <p style="color:var(--text-dim);margin-top:6px">200,000 шуток • 132 категории • AI-поиск</p>
+        <p style="color:var(--text-dim);margin-top:4px">Подключается к API серверу для получения данных</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== Tab bar ===== -->
+<div class="tab-bar">
+  <div class="tab active" data-tab="context" onclick="switchTab('context')"><span class="icon">🎯</span>В тему</div>
+  <div class="tab" data-tab="cats" onclick="switchTab('cats')"><span class="icon">📂</span>Категории</div>
+  <div class="tab" data-tab="random" onclick="switchTab('random')"><span class="icon">🎲</span>Случайный</div>
+  <div class="tab" data-tab="favs" onclick="switchTab('favs')"><span class="icon">❤️</span>Избранное</div>
+  <div class="tab" data-tab="settings" onclick="switchTab('settings')"><span class="icon">⚙️</span>Настройки</div>
+</div>
+
+<!-- ===== Toast ===== -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+let API_BASE = '';
+let connected = false;
+let favorites = JSON.parse(localStorage.getItem('anekdot_favorites') || '[]');
+let categoriesCache = null;
+
+// Default ports to try
+const PORTS_TO_TRY = [8788, 18788, 8000, 8080];
+
+// ============================================================
+// Initialization
+// ============================================================
+(function init() {
+  // Load saved URL
+  const saved = localStorage.getItem('anekdot_server_url');
+  if (saved) {
+    API_BASE = saved.replace(/\/+$/, '');
+    document.getElementById('serverUrlInput').value = API_BASE;
+  }
+  // Try connection
+  checkConnection();
+})();
+
+// ============================================================
+// API helpers
+// ============================================================
+async function api(path, options = {}) {
+  const url = API_BASE + path;
+  try {
+    const resp = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      ...options,
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return await resp.json();
+  } catch (e) {
+    throw e;
+  }
+}
+
+async function tryPort(baseUrl) {
+  try {
+    const resp = await fetch(baseUrl + '/api/stats', { signal: AbortSignal.timeout(3000) });
+    if (resp.ok) return true;
+  } catch {}
+  return false;
+}
+
+// ============================================================
+// Connection
+// ============================================================
+async function checkConnection() {
+  const noConn = document.getElementById('noConnScreen');
+  const dot = document.getElementById('connDot');
+
+  // If we have a saved URL, try it first
+  if (API_BASE) {
+    if (await tryPort(API_BASE)) {
+      setConnected(dot, noConn);
+      onConnected();
+      return;
+    }
+  }
+
+  // Try all default ports
+  for (const port of PORTS_TO_TRY) {
+    const url = `http://localhost:${port}`;
+    if (await tryPort(url)) {
+      API_BASE = url;
+      document.getElementById('serverUrlInput').value = API_BASE;
+      localStorage.setItem('anekdot_server_url', API_BASE);
+      setConnected(dot, noConn);
+      onConnected();
+      return;
+    }
+  }
+
+  // Also try 127.0.0.1 variants
+  for (const port of PORTS_TO_TRY) {
+    const url = `http://127.0.0.1:${port}`;
+    if (await tryPort(url)) {
+      API_BASE = url;
+      document.getElementById('serverUrlInput').value = API_BASE;
+      localStorage.setItem('anekdot_server_url', API_BASE);
+      setConnected(dot, noConn);
+      onConnected();
+      return;
+    }
+  }
+
+  // Failed
+  setDisconnected(dot, noConn);
+}
+
+function setConnected(dot, noConn) {
+  connected = true;
+  dot.classList.remove('off');
+  dot.classList.add('on');
+  dot.title = 'Подключено: ' + API_BASE;
+  noConn.classList.remove('show');
+  updateConnStatus(true);
+}
+
+function setDisconnected(dot, noConn) {
+  connected = false;
+  dot.classList.remove('on');
+  dot.classList.add('off');
+  dot.title = 'Нет соединения';
+  noConn.classList.add('show');
+  updateConnStatus(false);
+}
+
+function updateConnStatus(ok) {
+  const el = document.getElementById('connStatus');
+  if (ok) {
+    el.innerHTML = `<span class="dot green"></span> Подключено к <strong>${API_BASE}</strong>`;
+  } else {
+    el.innerHTML = `<span class="dot red"></span> Не удалось подключиться`;
+  }
+}
+
+function onConnected() {
+  // Load categories if on that tab
+  if (!categoriesCache) loadCategories();
+  // Render favorites
+  renderFavorites();
+}
+
+// ============================================================
+// Save & Test Connection (Settings)
+// ============================================================
+async function saveAndTestConnection() {
+  const url = document.getElementById('serverUrlInput').value.trim().replace(/\/+$/, '');
+  if (!url) { toast('Введите URL сервера'); return; }
+  API_BASE = url;
+  localStorage.setItem('anekdot_server_url', API_BASE);
+  toast('URL сохранён, проверяю...');
+  await testConnection();
+}
+
+async function testConnection() {
+  const el = document.getElementById('connStatus');
+  el.innerHTML = `<span class="dot yellow"></span> Проверяю ${API_BASE}...`;
+  const dot = document.getElementById('connDot');
+  const noConn = document.getElementById('noConnScreen');
+
+  try {
+    const data = await api('/api/stats');
+    setConnected(dot, noConn);
+    toast('✅ Соединение успешно! ' + (data.total_jokes || data.jokes_count || '') + ' шуток');
+    if (!categoriesCache) loadCategories();
+  } catch (e) {
+    setDisconnected(dot, noConn);
+    toast('❌ Ошибка: ' + e.message);
+  }
+}
+
+// ============================================================
+// Tab switching
+// ============================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+
+  // Auto-load data when switching tabs
+  if (name === 'cats' && !categoriesCache && connected) loadCategories();
+  if (name === 'favs') renderFavorites();
+  if (name === 'random') {} // user clicks the button
+}
+
+// ============================================================
+// Random joke
+// ============================================================
+async function loadRandomJoke() {
+  const area = document.getElementById('randomJokeArea');
+  area.innerHTML = '<div class="loading-overlay"><div class="spinner"></div> Ищем смешной анекдот...</div>';
+
+  try {
+    const joke = await api('/api/joke/random');
+    area.innerHTML = renderJokeCard(joke, 'random');
+  } catch (e) {
+    area.innerHTML = `<div class="card"><p>❌ Не удалось загрузить шутку: ${escHtml(e.message)}</p><p style="color:var(--text-dim);margin-top:8px">Проверьте подключение к серверу в ⚙️ Настройках</p></div>`;
+    handleConnError(e);
+  }
+}
+
+// ============================================================
+// Context search
+// ============================================================
+async function searchContext() {
+  const text = document.getElementById('contextInput').value.trim();
+  if (!text) { toast('Введите описание ситуации'); return; }
+
+  const btn = document.getElementById('ctxBtn');
+  const area = document.getElementById('contextResults');
+  btn.disabled = true;
+  btn.textContent = '⏳ Ищу...';
+  area.innerHTML = '<div class="loading-overlay"><div class="spinner"></div> Подбираю анекдоты...</div>';
+
+  try {
+    const data = await api('/api/jokes/context', {
+      method: 'POST',
+      body: JSON.stringify({ text, count: 3 }),
+    });
+
+    const jokes = data.jokes || data.results || (Array.isArray(data) ? data : []);
+    if (jokes.length === 0) {
+      area.innerHTML = '<div class="card" style="text-align:center;color:var(--text-dim)">😔 Ничего не найдено. Попробуйте другой запрос.</div>';
+    } else {
+      area.innerHTML = jokes.map((j, i) => renderJokeCard(j, 'ctx-' + i)).join('');
+    }
+  } catch (e) {
+    area.innerHTML = `<div class="card"><p>❌ Ошибка: ${escHtml(e.message)}</p></div>`;
+    handleConnError(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🎯 Найти в тему';
+  }
+}
+
+// ============================================================
+// Categories
+// ============================================================
+async function loadCategories() {
+  const grid = document.getElementById('catGrid');
+  const loading = document.getElementById('catLoading');
+
+  try {
+    const data = await api('/api/categories');
+    categoriesCache = data;
+    loading.style.display = 'none';
+
+    // data can be dict {name: count} or array
+    let entries;
+    if (Array.isArray(data)) {
+      entries = data.map(c => [c.name || c, c.count || 0]);
+    } else if (typeof data === 'object') {
+      entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+    } else {
+      grid.innerHTML = '<p>Неожиданный формат данных</p>';
+      return;
+    }
+
+    grid.innerHTML = entries.map(([name, count]) =>
+      `<div class="cat-card" onclick="loadCategoryJokes('${escAttr(name)}')">
+        <span class="name">${escHtml(name)}</span>
+        <span class="count">${count}</span>
+      </div>`
+    ).join('');
+  } catch (e) {
+    loading.innerHTML = '❌ Ошибка загрузки категорий: ' + escHtml(e.message);
+    handleConnError(e);
+  }
+}
+
+async function loadCategoryJokes(catName) {
+  // Switch to random tab and show loading, then search
+  switchTab('random');
+  const area = document.getElementById('randomJokeArea');
+  area.innerHTML = `<div class="loading-overlay"><div class="spinner"></div> Загрузка: ${escHtml(catName)}...</div>`;
+
+  try {
+    const joke = await api('/api/joke/random?category=' + encodeURIComponent(catName));
+    area.innerHTML = `<div style="margin-bottom:12px;color:var(--text-dim);font-size:13px">📂 ${escHtml(catName)}</div>` +
+      renderJokeCard(joke, 'random') +
+      `<button class="btn btn-outline" style="width:100%;margin-top:12px" onclick="loadCategoryJokes('${escAttr(catName)}')">🎲 Ещё из этой категории</button>`;
+  } catch (e) {
+    area.innerHTML = `<div class="card"><p>❌ Ошибка: ${escHtml(e.message)}</p></div>`;
+  }
+}
+
+// ============================================================
+// Search
+// ============================================================
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) { toast('Введите поисковый запрос'); return; }
+
+  const area = document.getElementById('searchResults');
+  area.innerHTML = '<div class="loading-overlay"><div class="spinner"></div> Поиск...</div>';
+
+  try {
+    const data = await api('/api/jokes/search?q=' + encodeURIComponent(q));
+    const jokes = data.results || data.jokes || (Array.isArray(data) ? data : []);
+    if (jokes.length === 0) {
+      area.innerHTML = '<div style="color:var(--text-dim);padding:16px">😔 Ничего не найдено</div>';
+    } else {
+      area.innerHTML = jokes.map((j, i) => renderJokeCard(j, 'search-' + i)).join('');
+    }
+  } catch (e) {
+    area.innerHTML = `<div class="card"><p>❌ Ошибка: ${escHtml(e.message)}</p></div>`;
+  }
+}
+
+// ============================================================
+// Favorites (localStorage)
+// ============================================================
+function isFaved(jokeId) {
+  return favorites.some(f => f.id === jokeId);
+}
+
+function toggleFav(jokeId, jokeText, jokeCat) {
+  const idx = favorites.findIndex(f => f.id === jokeId);
+  if (idx >= 0) {
+    favorites.splice(idx, 1);
+    toast('💔 Убрано из избранного');
+  } else {
+    favorites.push({ id: jokeId, text: jokeText, category: jokeCat, ts: Date.now() });
+    toast('❤️ Добавлено в избранное');
+  }
+  localStorage.setItem('anekdot_favorites', JSON.stringify(favorites));
+  // Update heart icons for this joke
+  document.querySelectorAll(`[data-fav-id="${jokeId}"]`).forEach(el => {
+    el.classList.toggle('faved', isFaved(jokeId));
+    el.textContent = isFaved(jokeId) ? '❤️' : '🤍';
+  });
+  // Update clear button
+  document.getElementById('clearFavsBtn').style.display = favorites.length ? '' : 'none';
+}
+
+function renderFavorites() {
+  const area = document.getElementById('favsList');
+  const clearBtn = document.getElementById('clearFavsBtn');
+  clearBtn.style.display = favorites.length ? '' : 'none';
+
+  if (favorites.length === 0) {
+    area.innerHTML = '<div class="empty-state"><div class="emoji">💜</div><h3>Пока пусто</h3><p>Нажмите 🤍 на анекдоте, чтобы добавить в избранное</p></div>';
+    return;
+  }
+
+  area.innerHTML = [...favorites].reverse().map((f, i) =>
+    `<div class="card joke-enter">
+      <div class="cat">${escHtml(f.category || 'Без категории')}</div>
+      <div class="text">${escHtml(f.text)}</div>
+      <div class="actions">
+        <button class="btn-icon faved" data-fav-id="${f.id}" onclick="toggleFav(${f.id},\`${escAttr(f.text)}\`,'${escAttr(f.category || '')}')">❤️</button>
+        <button class="btn-icon" onclick="copyText(\`${escAttr(f.text)}\`)" title="Копировать">📋</button>
+        <button class="btn-icon" onclick="speakJoke(\`${escAttr(f.text)}\`)" title="Озвучить">🔊</button>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function clearFavorites() {
+  if (!confirm('Очистить все избранное?')) return;
+  favorites = [];
+  localStorage.setItem('anekdot_favorites', JSON.stringify(favorites));
+  renderFavorites();
+  toast('🗑 Избранное очищено');
+}
+
+// ============================================================
+// TTS
+// ============================================================
+async function speakJoke(text) {
+  try {
+    toast('🔊 Озвучиваю...');
+    const data = await api('/api/voice/tts', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+    if (data.audio_file) {
+      const audio = new Audio(API_BASE + data.audio_file);
+      audio.play().catch(() => toast('❌ Не удалось воспроизвести'));
+    } else if (data.audio_url) {
+      const audio = new Audio(data.audio_url);
+      audio.play().catch(() => toast('❌ Не удалось воспроизвести'));
+    } else {
+      toast('⚠️ TTS недоступен');
+    }
+  } catch (e) {
+    // Fallback: use browser TTS
+    if ('speechSynthesis' in window) {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'ru-RU';
+      speechSynthesis.speak(utter);
+      toast('🔊 Озвучиваю (браузер)');
+    } else {
+      toast('❌ TTS недоступен');
+    }
+  }
+}
+
+// ============================================================
+// Render joke card
+// ============================================================
+function renderJokeCard(joke, prefix) {
+  const id = joke.id ?? Date.now();
+  const text = joke.text || joke.joke || joke.content || '';
+  const cat = joke.category || joke.cat || '';
+  const rating = joke.rating ?? '';
+  const tags = joke.tags || [];
+  const faved = isFaved(id);
+
+  return `<div class="card joke-enter">
+    ${cat ? `<div class="cat">${escHtml(cat)}</div>` : ''}
+    <div class="text">${escHtml(text)}</div>
+    <div class="meta">
+      ${rating ? `<span>⭐ ${rating}</span>` : ''}
+      ${tags.slice(0, 3).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+    </div>
+    <div class="actions">
+      <button class="btn-icon ${faved ? 'faved' : ''}" data-fav-id="${id}" onclick="toggleFav(${id},\`${escAttr(text)}\`,'${escAttr(cat)}')" title="В избранное">${faved ? '❤️' : '🤍'}</button>
+      <button class="btn-icon" onclick="copyText(\`${escAttr(text)}\`)" title="Копировать">📋</button>
+      <button class="btn-icon" onclick="speakJoke(\`${escAttr(text)}\`)" title="Озвучить">🔊</button>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/"/g,'\\"').replace(/'/g,"\\'");
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('📋 Скопировано!')).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('📋 Скопировано!');
+  });
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function handleConnError(e) {
+  if (e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('net::'))) {
+    connected = false;
+    const dot = document.getElementById('connDot');
+    const noConn = document.getElementById('noConnScreen');
+    setDisconnected(dot, noConn);
+  }
+}
+</script>
+</body>
+</html>
