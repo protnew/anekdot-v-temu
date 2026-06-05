@@ -16,42 +16,64 @@ cd /d "%~dp0"
 :: Check Python
 where python >nul 2>nul
 if errorlevel 1 (
-    echo ❌ Python не найден! Сначала запустите install.bat
+    echo ❌ Python не найден!
+    echo    Скачайте: https://www.python.org/downloads/
+    echo    ⚠️ При установке отметьте "Add Python to PATH"
+    echo.
     pause
     exit /b 1
 )
 
+for /f "tokens=*" %%i in ('python --version 2^>^&1') do echo ✅ %%i
+
 :: Check if deps installed
 python -c "import fastapi, uvicorn, sklearn" 2>nul
 if errorlevel 1 (
-    echo ⚠️ Зависимости не установлены. Запускаю установку...
-    pip install fastapi uvicorn scikit-learn numpy pydantic python-multipart --quiet
     echo.
+    echo ⚠️ Зависимости не установлены. Устанавливаю...
+    echo    Это может занять 2-5 минут (первый раз)...
+    echo.
+    pip install fastapi uvicorn scikit-learn numpy pydantic python-multipart
+    if errorlevel 1 (
+        echo.
+        echo ❌ Ошибка установки! Попробуйте вручную:
+        echo    pip install fastapi uvicorn scikit-learn numpy pydantic python-multipart
+        echo.
+        pause
+        exit /b 1
+    )
+    echo.
+    echo ✅ Зависимости установлены!
 )
 
+echo.
 echo 🚀 Запуск сервера...
 echo.
-echo  📍 Веб-версия:       http://localhost:8000/
-echo  📍 Десктоп:          http://localhost:8000/desktop
-echo  📍 Flutter:          http://localhost:8000/flutter
-echo  📍 Landing:          http://localhost:8000/landing
-echo  📍 API стат:         http://localhost:8000/api/stats
+echo  📍 Открой в браузере:  http://localhost:8000/
 echo.
-echo  ⏳ Индексация 286K анекдотов займёт ~30-60 секунд...
+echo  Страницы:
+echo    http://localhost:8000/          — Веб-версия (SPA)
+echo    http://localhost:8000/desktop   — Десктоп-версия
+echo    http://localhost:8000/flutter   — Flutter Web
+echo.
 echo  🛑 Для остановки: Ctrl+C
 echo.
 echo  ══════════════════════════════════════════
 echo.
 
-:: Auto-open browser after delay
-start "" /b cmd /c "timeout /t 30 /nobreak >nul && start http://localhost:8000/"
+:: Auto-open browser after 3 seconds
+start "" /b cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:8000/"
 
-python main.py
+python main.py 2>&1
 if errorlevel 1 (
     echo.
-    echo ❌ Ошибка запуска! Проверьте лог выше.
+    echo ❌ Ошибка запуска! Смотри лог выше ↑
     echo.
-    echo Попробуйте:
-    echo   pip install fastapi uvicorn scikit-learn numpy pydantic python-multipart
-    pause
+    echo Возможные причины:
+    echo   1. Порт 8000 занят — закройте другие программы
+    echo   2. Зависимости не установлены — запустите install.bat
+    echo   3. Мало памяти — нужно ~1GB RAM для 286K шуток
+    echo.
 )
+
+pause

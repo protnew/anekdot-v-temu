@@ -193,10 +193,17 @@ class SemanticSearchEngine:
         }
 
 
-# Build search engine on startup
-print("🔍 Building semantic index...")
-search_engine = SemanticSearchEngine()
-print(f"✅ Indexed {len(search_engine.jokes)} jokes, vocab size: {search_engine.get_stats()['vocabulary_size']}")
+# Lazy search engine — don't build TF-IDF index until first search request
+# This lets the server start INSTANTLY instead of waiting 60-90 seconds
+search_engine = None
+
+def _get_search_engine():
+    global search_engine
+    if search_engine is None:
+        print("🔍 Building semantic index (first request)...")
+        search_engine = SemanticSearchEngine()
+        print(f"✅ Indexed {len(search_engine.jokes)} jokes, vocab size: {search_engine.get_stats()['vocabulary_size']}")
+    return search_engine
 
 # ============================================================
 # Keyword Map (fallback + category boosting)
@@ -439,7 +446,7 @@ async def get_jokes(
 @app.get("/api/jokes/search")
 async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10, ge=1, le=50)):
     """Full-text search using TF-IDF semantic search."""
-    results = search_engine.search(q, top_k=limit)
+    results = _get_search_engine().search(q, top_k=limit)
     return {"jokes": results, "total": len(results)}
 
 @app.post("/api/jokes/context")
@@ -447,7 +454,7 @@ async def contextual_joke(request: JokeRequest):
     """Get contextually relevant jokes using semantic search + keyword boosting."""
     request.validate_text()
     # Step 1: Semantic search
-    semantic_results = search_engine.search(request.text, top_k=30)
+    semantic_results = _get_search_engine().search(request.text, top_k=30)
     
     # Step 2: Keyword matching for category boosting
     matching_cats = find_matching_categories(request.text)
@@ -582,31 +589,46 @@ async def rate_joke(request: RatingRequest):
                 joke["rating"] = min(new, 5.0)  # Never exceed 5.0
                 # Schedule save — don't block response
                 _schedule_rating_save()
-                search_engine._dirty = True
+                _get_search_engine()._dirty = True
                 return {"new_rating": joke["rating"]}
     raise HTTPException(status_code=404, detail="Joke not found")
 
 @app.get("/api/joke/random")
 async def random_joke(category: Optional[str] = Query(None), lang: Optional[str] = Query(None)):
-    jokes = search_engine.jokes
-    if category:
-        filtered = [j for j in jokes if j.get("category") == category]
-        if filtered:
-            return random.choice(filtered)
-    # Default: prioritize Russian jokes unless lang=en specified
+    # Fast random: pick a random category then a random joke from it
+    # No need to load ALL 286K jokes into memory
+    db = load_jokes()
+    cats = list(db.keys())
+    if not cats:
+        raise HTTPException(404, "No jokes")
+    
+    if category and category in db:
+        jokes = db[category]
+        if jokes:
+            j = random.choice(jokes)
+            return {**j, "category": category}
+    
+    # Filter categories by language
     if lang == "en":
-        en_jokes = [j for j in jokes if j.get("category", "").startswith("en_")]
-        if en_jokes:
-            return random.choice(en_jokes)
+        cats = [c for c in cats if c.startswith("en_")]
     elif lang and lang != "ru":
-        lang_jokes = [j for j in jokes if j.get("category", "").startswith(f"{lang}_")]
-        if lang_jokes:
-            return random.choice(lang_jokes)
-    # Russian by default
-    ru_jokes = [j for j in jokes if not j.get("category", "").startswith("en_") and not j.get("category", "")[2:3] == "_"]
-    if ru_jokes:
-        return random.choice(ru_jokes)
-    return random.choice(jokes)
+        cats = [c for c in cats if c.startswith(f"{lang}_")]
+    else:
+        # Russian: exclude en_, es_, de_, fr_, pt_, zh_, ja_, ar_, hi_
+        cats = [c for c in cats if not (len(c) >= 2 and c[2:3] == "_")]
+    
+    if not cats:
+        cats = list(db.keys())
+    
+    # Pick random category, then random joke
+    cat = random.choice(cats)
+    jokes = db.get(cat, [])
+    if not jokes:
+        cat = random.choice(list(db.keys()))
+        jokes = db[cat]
+    
+    j = random.choice(jokes)
+    return {**j, "category": cat}
 
 
 # ============================================================
@@ -946,14 +968,18 @@ async def alice_webhook(request: dict):
     if not command or command in ["помощь", "что ты умеешь"]:
         text = "Я подбираю анекдоты по теме! Скажите, например: «расскажи анекдот про работу» или «шутка про котиков»."
     elif "случайный" in command or "любой" in command:
-        joke = random.choice(search_engine.jokes)
+        db = load_jokes()
+        cat = random.choice(list(db.keys()))
+        joke = random.choice(db[cat])
         text = joke["text"]
     else:
         data = api_post("/api/jokes/context", {"text": original_utterance, "count": 1})
         if data and data.get("jokes"):
             text = data["jokes"][0]["text"]
         else:
-            joke = random.choice(search_engine.jokes)
+            db = load_jokes()
+            cat = random.choice(list(db.keys()))
+            joke = random.choice(db[cat])
             text = f"Не нашёл подходящий, но вот: {joke['text']}"
     
     return {
@@ -1279,16 +1305,24 @@ async def serve_tts_file(filename: str):
 @app.get("/api/stats")
 async def get_stats():
     db = load_jokes()
-    all_jokes = get_all_jokes()
+    total = sum(len(items) for items in db.values())
     all_favs = load_json(FAVORITES_FILE, {})
     total_favs = sum(len(v) for v in all_favs.values()) if isinstance(all_favs, dict) else len(all_favs)
     history = load_json(HISTORY_FILE, [])
-    sem_stats = search_engine.get_stats()
     
-    avg_rating = sum(j.get("rating", 0) for j in all_jokes) / len(all_jokes) if all_jokes else 0
+    # Only count if search engine is already loaded
+    sem_stats = search_engine.get_stats() if search_engine else {"indexed_jokes": 0, "vocabulary_size": 0}
+    
+    # Quick avg from first 1000 jokes (avoid loading all 286K)
+    sample = []
+    for items in db.values():
+        sample.extend(items[:10])
+        if len(sample) >= 1000:
+            break
+    avg_rating = sum(j.get("rating", 4.0) for j in sample) / len(sample) if sample else 4.0
     
     return {
-        "total_jokes": len(all_jokes),
+        "total_jokes": total,
         "en_jokes": len(EN_JOKES),
         "categories": len(db),
         "favorites_count": total_favs,
