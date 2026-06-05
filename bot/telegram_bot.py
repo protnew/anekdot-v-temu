@@ -17,7 +17,8 @@ Inline mode:
     export API_BASE="http://localhost:8000"
     python bot/telegram_bot.py
 """
-import os, sys, json, logging, hashlib
+import os, html
+from urllib.parse import quote, sys, json, logging, hashlib
 
 try:
     import telebot
@@ -132,7 +133,7 @@ def cmd_top(msg):
     if data and data.get("jokes"):
         lines = ["🏆 <b>Топ анекдотов:</b>\n"]
         for i, j in enumerate(data["jokes"][:5], 1):
-            lines.append(f"{i}. {j['text'][:150]}\n📂 {j.get('category','')} | ⭐{j.get('rating','?')}\n")
+            lines.append(f"{i}. {html.escape(j['text'][:150])}\n📂 {j.get('category','')} | ⭐{j.get('rating','?')}\n")
         bot.reply_to(msg, "\n".join(lines), parse_mode="HTML")
     else:
         cmd_random(msg)
@@ -155,13 +156,13 @@ def cmd_stats(msg):
         bot.reply_to(msg, "😔 API недоступен.")
 
 
-@bot.message_handler(func=lambda m: m.text and m.text.startswith("/cat"))
+@bot.message_handler(func=lambda m: m.text and m.text.startswith("/cat "))
 def cmd_category(msg):
     cat = msg.text.replace("/cat", "").strip().replace("_", " ")
     if not cat:
         bot.reply_to(msg, "Укажи категорию: /cat работа\nСмотри /categories")
         return
-    data = api(f"/api/jokes?category={cat}&count=3")
+    data = api(f"/api/jokes?category={quote(cat)}&count=3")
     if data and data.get("jokes"):
         for j in data["jokes"]:
             bot.send_message(msg.chat.id, format_joke(j))

@@ -374,8 +374,10 @@ class SpamDetector:
             if self._cosine_similarity(current_vec, prev_vec) > 0.9:
                 return True
 
-        # Сохраняем в историю
+        # Сохраняем в историю (максимум 200 записей)
         self._history.append(text)
+        if len(self._history) > 200:
+            self._history = self._history[-200:]
         return False
 
 

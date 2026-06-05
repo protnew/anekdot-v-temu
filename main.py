@@ -1,4 +1,4 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.7.0
+"""Анекдот в тему — AI-powered contextual joke app v3.9.0
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -7,7 +7,7 @@
 - User CRUD, analytics, social, personalization
 - PWA, multi-language, moderation
 """
-import json, os, random, hashlib, time, subprocess, tempfile, struct, base64
+import json, os, random, hashlib, time, subprocess, tempfile, base64, asyncio
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse, FileResponse
@@ -16,7 +16,22 @@ from pydantic import BaseModel
 from typing import Optional, List
 from moderation import ProfanityFilter, SpamDetector, ContentModerator
 
-app = FastAPI(title="Анекдот в тему", version="3.8.0")
+
+async def _run_subprocess(args, timeout=30):
+    """Non-blocking subprocess run."""
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    try:
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        return proc.returncode, stdout, stderr
+    except asyncio.TimeoutError:
+        proc.kill()
+        raise TimeoutError(f"Command timed out: {args[0]}")
+
+app = FastAPI(title="Анекдот в тему", version="3.9.0")
 
 # Allow CORS for local development (emulator from file://)
 app.add_middleware(
@@ -511,7 +526,7 @@ async def generate_joke(request: JokeRequest):
     matching_cats = find_matching_categories(request.text)
     
     # Try LLM first
-    llm_joke = generate_joke_with_llm(request.text)
+    llm_joke = await asyncio.to_thread(generate_joke_with_llm, request.text)
     
     if llm_joke:
         return {
@@ -585,12 +600,14 @@ async def rate_joke(request: RatingRequest):
         for joke in jokes:
             if joke["id"] == request.joke_id:
                 old = joke.get("rating", 4.0)
-                new = round((old + clamped) / 2, 1)
-                joke["rating"] = min(new, 5.0)  # Never exceed 5.0
+                # Weighted average with increasing confidence
+                votes = joke.get("votes", 1) + 1
+                new = round((old * (votes - 1) + clamped) / votes, 1)
+                joke["rating"] = min(max(new, 1.0), 5.0)
+                joke["votes"] = votes
                 # Schedule save — don't block response
                 _schedule_rating_save()
-                _get_search_engine()._dirty = True
-                return {"new_rating": joke["rating"]}
+                return {"new_rating": joke["rating"], "votes": votes}
     raise HTTPException(status_code=404, detail="Joke not found")
 
 @app.get("/api/joke/random")
@@ -649,7 +666,8 @@ def get_db():
 
 def init_db():
     conn = get_db()
-    conn.executescript("""
+    try:
+        conn.executescript("""
         CREATE TABLE IF NOT EXISTS jokes (
             id INTEGER PRIMARY KEY,
             category TEXT NOT NULL,
@@ -687,8 +705,9 @@ def init_db():
             last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
 
 init_db()
 
@@ -713,14 +732,20 @@ class UserJokeRequest(BaseModel):
 async def create_user_joke(req: UserJokeRequest):
     """Add a user-submitted joke."""
     req.validate()
+    # Moderation check
+    mod = _moderator.moderate(req.text)
+    if not mod["approved"]:
+        raise HTTPException(status_code=422, detail=f"Контент отклонён: {'; '.join(mod['reasons'])}")
     conn = get_db()
-    cur = conn.execute(
-        "INSERT INTO user_jokes (category, text, tags) VALUES (?, ?, ?)",
-        (req.category, req.text, json.dumps(req.tags, ensure_ascii=False))
-    )
-    conn.commit()
-    joke_id = cur.lastrowid
-    conn.close()
+    try:
+        cur = conn.execute(
+            "INSERT INTO user_jokes (category, text, tags) VALUES (?, ?, ?)",
+            (req.category, req.text, json.dumps(req.tags, ensure_ascii=False))
+        )
+        conn.commit()
+        joke_id = cur.lastrowid
+    finally:
+        conn.close()
     return {"id": joke_id, "status": "pending_approval"}
 
 @app.get("/api/user-jokes")
@@ -744,9 +769,11 @@ async def list_user_jokes(approved: int = Query(0)):
 @app.delete("/api/user-jokes/{joke_id}")
 async def delete_user_joke(joke_id: int):
     conn = get_db()
-    conn.execute("DELETE FROM user_jokes WHERE id = ?", (joke_id,))
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("DELETE FROM user_jokes WHERE id = ?", (joke_id,))
+        conn.commit()
+    finally:
+        conn.close()
     return {"deleted": True}
 
 # ============================================================
@@ -771,8 +798,10 @@ async def update_preferences(user_hash: str, liked_cat: str = "", disliked_cat: 
 async def get_personalized(user_hash: str, count: int = Query(3, ge=1, le=10)):
     """Get personalized joke recommendations."""
     conn = get_db()
-    row = conn.execute("SELECT * FROM user_prefs WHERE user_hash = ?", (user_hash,)).fetchone()
-    conn.close()
+    try:
+        row = conn.execute("SELECT * FROM user_prefs WHERE user_hash = ?", (user_hash,)).fetchone()
+    finally:
+        conn.close()
     
     all_jokes = get_all_jokes()
     if row:
@@ -802,22 +831,23 @@ async def get_personalized(user_hash: str, count: int = Query(3, ge=1, le=10)):
 async def like_joke(joke_id: int):
     """Like a joke."""
     conn = get_db()
-    # Check if in SQLite
-    row = conn.execute("SELECT * FROM jokes WHERE id = ?", (joke_id,)).fetchone()
-    if row:
-        conn.execute("UPDATE jokes SET likes = likes + 1 WHERE id = ?", (joke_id,))
-    else:
-        # Insert from JSON db
-        all_jokes = get_all_jokes()
-        joke = next((j for j in all_jokes if j["id"] == joke_id), None)
-        if joke:
-            conn.execute("INSERT INTO jokes (id, category, text, rating, tags, likes) VALUES (?,?,?,?,?,1)",
-                        (joke["id"], joke["category"], joke["text"], joke.get("rating", 4.0), json.dumps(joke.get("tags",[]))))
+    try:
+        # Check if in SQLite
+        row = conn.execute("SELECT * FROM jokes WHERE id = ?", (joke_id,)).fetchone()
+        if row:
+            conn.execute("UPDATE jokes SET likes = likes + 1 WHERE id = ?", (joke_id,))
         else:
-            conn.close()
-            raise HTTPException(404, "Joke not found")
-    conn.commit()
-    conn.close()
+            # Insert from JSON db
+            all_jokes = get_all_jokes()
+            joke = next((j for j in all_jokes if j["id"] == joke_id), None)
+            if joke:
+                conn.execute("INSERT INTO jokes (id, category, text, rating, tags, likes) VALUES (?,?,?,?,?,1)",
+                            (joke["id"], joke["category"], joke["text"], joke.get("rating", 4.0), json.dumps(joke.get("tags",[]))))
+            else:
+                raise HTTPException(404, "Joke not found")
+        conn.commit()
+    finally:
+        conn.close()
     
     # Track analytics
     track_event("like", joke_id=joke_id)
@@ -868,8 +898,8 @@ def track_event(event_type: str, category: str = None, joke_id: int = None, quer
         )
         conn.commit()
         conn.close()
-    except Exception:
-        pass  # Analytics shouldn't break the app
+    except Exception as e:
+        print(f"⚠️ Analytics error: {e}")  # Log instead of silent pass
 
 @app.get("/api/analytics/popular")
 async def popular_topics(days: int = Query(7, ge=1, le=30)):
@@ -1098,10 +1128,7 @@ async def speech_to_text(request: dict):
         wav_path = tmp_path
         if audio_format != "wav":
             wav_path = tmp_path + ".wav"
-            subprocess.run(
-                ["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
-                capture_output=True, timeout=10
-            )
+            await _run_subprocess(["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path], timeout=10)
         
         # Step 1: Silero VAD — check if there's actual speech
         vad_result = _silero_vad_check(wav_path)
@@ -1124,12 +1151,10 @@ async def speech_to_text(request: dict):
             model_name = "faster_whisper base (CPU)"
         else:
             # whisper.cpp (Linux/Docker) — faster, compiled binary
-            result = subprocess.run(
-                [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", language, "-f", wav_path,
-                 "--no-timestamps", "-t", "4", "--output-txt"],
-                capture_output=True, text=True, timeout=30
+            rc, stdout, stderr = await _run_subprocess([WHISPER_CLI, "-m", WHISPER_MODEL, "-l", language, "-f", wav_path,
+                 "--no-timestamps", "-t", "4", "--output-txt"], timeout=30
             )
-            text = result.stdout.strip()
+            text = stdout.decode().strip()
             # Also try to read the .txt file whisper may have created
             txt_path = wav_path + ".txt"
             if os.path.exists(txt_path):
@@ -1166,22 +1191,25 @@ async def speech_to_text(request: dict):
 
 @app.post("/api/voice/stt/file")
 async def speech_to_text_file(file: UploadFile = None):
-    """Upload audio file for STT. Accepts WAV/MP3/OGG/FLAC."""
+    """Upload audio file for STT. Accepts WAV/MP3/OGG/FLAC. Max 25MB."""
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded")
     
+    # Read with size limit (25MB max)
+    content = await file.read()
+    if len(content) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large (max 25MB)")
+    
     suffix = Path(file.filename).suffix if file.filename else ".wav"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(await file.read())
+        tmp.write(content)
         tmp_path = tmp.name
     
     try:
         # Convert to 16kHz WAV
         wav_path = tmp_path + ".wav"
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
-            capture_output=True, timeout=10
-        )
+        await _run_subprocess(
+            ["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path], timeout=10)
         
         # VAD check
         vad_result = _silero_vad_check(wav_path)
@@ -1202,12 +1230,11 @@ async def speech_to_text_file(file: UploadFile = None):
             text = " ".join(s.text for s in segments).strip()
             model_used = "faster_whisper base (CPU)"
         else:
-            result = subprocess.run(
+            rc, stdout, stderr = await _run_subprocess(
                 [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", "auto", "-f", wav_path,
-                 "--no-timestamps", "-t", "4"],
-                capture_output=True, text=True, timeout=30
+                 "--no-timestamps", "-t", "4"], timeout=30
             )
-            text = result.stdout.strip()
+            text = stdout.decode().strip()
             model_used = "whisper.cpp base"
         
         # Cleanup
@@ -1274,7 +1301,7 @@ async def text_to_speech(request: dict):
         tts_dir.mkdir(parents=True, exist_ok=True)
         
         import hashlib
-        fname = hashlib.md5(text.encode()).hexdigest()[:12] + ".mp3"
+        fname = hashlib.sha256(text.encode()).hexdigest()[:12] + ".mp3"
         fpath = tts_dir / fname
         
         if not fpath.exists():
@@ -1303,7 +1330,7 @@ async def serve_tts_file(filename: str):
     fpath = BASE_DIR / "data" / "tts" / filename
     if fpath.exists():
         return FileResponse(str(fpath), media_type="audio/mpeg")
-    return {"error": "file not found"}
+    raise HTTPException(status_code=404, detail="TTS file not found")
 
 # ============================================================
 # Extended Stats
@@ -1348,7 +1375,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.8.0"
+        "version": "3.9.0"
     }
 
 # ============================================================
@@ -1412,18 +1439,16 @@ async def moderate_text(request: ModerateRequest):
 @app.post("/api/moderate/profanity")
 async def check_profanity(request: ModerateRequest):
     """Проверить только мат (ProfanityFilter)."""
-    pf = ProfanityFilter()
-    return pf.check(request.text)
+    return _moderator._profanity.check(request.text)
 
 @app.post("/api/moderate/spam")
 async def check_spam(request: ModerateRequest):
     """Проверить только спам (SpamDetector)."""
-    sd = SpamDetector()
-    result = sd.is_spam(request.text)
+    result = _moderator._spam.is_spam(request.text)
     return {"is_spam": result, "text": request.text}
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"Запуск Анекдот в тему v3.8.0 на http://localhost:{port}")
+    print(f"Запуск Анекдот в тему v3.9.0 на http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

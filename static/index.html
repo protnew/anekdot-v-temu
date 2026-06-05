@@ -365,9 +365,12 @@
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
 </head>
 <body>
-
-<div class="header">
-    <h1>😂 Анекдот в тему</h1>
+<div class="container">
+    <div id="offlineBanner" style="display:none;background:#e94560;color:#fff;padding:10px;border-radius:8px;margin-bottom:12px;text-align:center">
+        ⚠️ Сервер недоступен. Проверьте подключение.
+    </div>
+    <div class="header">
+        <h1>🎭 Анекдот в Тему</h1>
     <p>AI-помощник для шуток по контексту — просто опишите ситуацию</p>
     <div class="stats-bar" id="statsBar">
         <div class="stat-item">📚 <span id="statJokes">0</span> анекдотов</div>
@@ -452,13 +455,34 @@
 <script>
 const API = '';  // Same origin
 
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
 // Category emojis
 const CAT_EMOJIS = {
     'работа': '💼', 'айти': '💻', 'деньги': '💰', 'семья': '👨‍👩‍👧',
     'политика': '🏛️', 'здоровье': '🏥', 'путешествия': '✈️', 'еда': '🍽️',
     'наука': '🔬', 'спорт': '⚽', 'образование': '🎓', 'отношения': '💑',
     'коронавирус': '😷', 'искусственный интеллект': '🤖', 'друзья': '🤝', 
-    'котики': '🐱', 'авто': '🚗', 'магазины': '🛒', 'дети': '👶', 'реклама': '📢'
+    'котики': '🐱', 'авто': '🚗', 'магазины': '🛒', 'дети': '👶', 'реклама': '📢',
+    // English
+    'en_misc': '😂', 'en_family': '👨‍👩‍👧', 'en_work': '💼', 'en_science': '🔬',
+    'en_animals': '🐾', 'en_food': '🍽️', 'en_sports': '⚽', 'en_crime': '🔫',
+    'en_medical': '🏥', 'en_music': '🎵', 'en_technology': '💻', 'en_political': '🏛️',
+    'en_religion': '⛪', 'en_bar': '🍺', 'en_relationship': '💑', 'en_professions': '👷',
+    // Other languages
+    'es_misc': '🇪🇸', 'de_misc': '🇩🇪', 'fr_misc': '🇫🇷', 'pt_misc': '🇧🇷',
+    'zh_misc': '🇨🇳', 'ja_misc': '🇯🇵', 'hi_misc': '🇮🇳', 'ar_misc': '🇸🇦'
+};
+const CAT_NAMES = {
+    'en_misc': 'Misc (EN)', 'en_family': 'Family (EN)', 'en_work': 'Work (EN)',
+    'en_science': 'Science (EN)', 'en_animals': 'Animals (EN)', 'en_food': 'Food (EN)',
+    'en_sports': 'Sports (EN)', 'en_crime': 'Crime (EN)', 'en_medical': 'Medical (EN)',
+    'en_music': 'Music (EN)', 'en_technology': 'Tech (EN)', 'en_political': 'Political (EN)',
+    'en_religion': 'Religion (EN)', 'en_bar': 'Bar (EN)', 'en_relationship': 'Love (EN)',
+    'en_professions': 'Jobs (EN)',
+    'es_misc': 'Varios (ES)', 'de_misc': 'Verschiedenes (DE)', 'fr_misc': 'Divers (FR)',
+    'pt_misc': 'Diversos (PT)', 'zh_misc': '杂项 (ZH)', 'ja_misc': 'その他 (JA)',
+    'hi_misc': 'विविध (HI)', 'ar_misc': 'متنوع (AR)'
 };
 
 let favorites = [];
@@ -485,9 +509,19 @@ function setupTabs() {
 async function api(path, opts = {}) {
     try {
         const res = await fetch(API + path, opts);
+        if (!res.ok) {
+            console.error('API error:', res.status, res.statusText);
+            return null;
+        }
         return await res.json();
     } catch(e) {
         console.error('API error:', e);
+        // Show offline banner
+        const banner = document.getElementById('offlineBanner');
+        if (banner) {
+            banner.style.display = 'block';
+            setTimeout(() => banner.style.display = 'none', 5000);
+        }
         return null;
     }
 }
@@ -516,20 +550,26 @@ async function loadCategories() {
     if (!data) return;
     const grid = document.getElementById('categoriesGrid');
     grid.innerHTML = '';
-    for (const [cat, count] of Object.entries(data)) {
+    const entries = Object.entries(data).sort((a,b) => b[1] - a[1]);
+    for (const [cat, count] of entries) {
         const emoji = CAT_EMOJIS[cat] || '📖';
+        const name = CAT_NAMES[cat] || cat;
         grid.innerHTML += `
-            <div class="category-card" onclick="loadCategoryJokes('${cat}')">
+            <div class="category-card" data-cat="${esc(cat)}">
                 <div class="emoji">${emoji}</div>
-                <div class="name">${cat}</div>
+                <div class="name">${esc(name)}</div>
                 <div class="count">${count} анекдотов</div>
             </div>
         `;
     }
+    // Use event delegation instead of inline onclick
+    grid.querySelectorAll('.category-card').forEach(card => {
+        card.addEventListener('click', () => loadCategoryJokes(card.dataset.cat));
+    });
 }
 
 async function loadCategoryJokes(category) {
-    const data = await api(`/api/jokes?category=${category}&count=10`);
+    const data = await api(`/api/jokes?category=${encodeURIComponent(category)}&count=10`);
     if (!data) return;
     document.getElementById('categoryJokes').innerHTML = data.jokes.map(j => renderJokeCard(j)).join('');
 }
@@ -561,7 +601,7 @@ async function findJoke() {
     if (data.matched_categories && data.matched_categories.length) {
         mc.style.display = 'flex';
         mc.innerHTML = '<span style="font-size:13px;color:#aaa">Темы:</span>' +
-            data.matched_categories.map(c => `<span class="matched-cat">${CAT_EMOJIS[c] || '📖'} ${c}</span>`).join('');
+            data.matched_categories.map(c => `<span class="matched-cat">${CAT_EMOJIS[c] || '📖'} ${esc(c)}</span>`).join('');
     } else {
         mc.style.display = 'none';
     }
@@ -646,9 +686,9 @@ function renderJokeCard(joke, collapsed = false) {
     
     return `
         <div class="joke-card">
-            <div class="joke-text">${joke.text}</div>
+            <div class="joke-text">${esc(joke.text)}</div>
             <div class="joke-meta">
-                <span class="joke-category">${emoji} ${joke.category}</span>
+                <span class="joke-category">${emoji} ${CAT_NAMES[joke.category] || joke.category}</span>
                 <div class="joke-rating">${stars} ${joke.rating || ''}</div>
             </div>
             <div class="joke-tags">${tags}${score}${genBadge}</div>
