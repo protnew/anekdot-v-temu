@@ -1,4 +1,4 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.11.0
+"""Анекдот в тему — AI-powered contextual joke app v3.12.0
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -31,6 +31,7 @@ async def _run_subprocess(args, timeout=30):
         return proc.returncode, stdout, stderr
     except asyncio.TimeoutError:
         proc.kill()
+        await proc.wait()  # reap zombie
         raise TimeoutError(f"Command timed out: {args[0]}")
 
 # ============================================================
@@ -46,8 +47,13 @@ class RateLimiter:
     async def is_allowed(self, ip: str) -> bool:
         async with self._lock:
             now = time.time()
-            # Clean old entries
+            # Clean old entries for this IP
             self._requests[ip] = [t for t in self._requests[ip] if now - t < self.window]
+            # Purge IPs with no recent requests (memory cleanup)
+            if len(self._requests) > 10000:
+                stale = [k for k, v in self._requests.items() if not v]
+                for k in stale:
+                    del self._requests[k]
             if len(self._requests[ip]) >= self.max_requests:
                 return False
             self._requests[ip].append(now)
@@ -125,7 +131,7 @@ async def lifespan(app):
         search_engine = None
     print("👋 Graceful shutdown complete")
 
-app = FastAPI(title="Анекдот в тему", version="3.11.0", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.12.0", lifespan=lifespan)
 
 # Allow CORS for local development (emulator from file://)
 app.add_middleware(
@@ -151,7 +157,9 @@ _jokes_cache_mtime = 0
 
 def load_jokes():
     global _jokes_cache, _jokes_cache_mtime
-    mtime = JOKES_FILE.stat().st_mtime if JOKES_FILE.exists() else 0
+    if not JOKES_FILE.exists():
+        return {}
+    mtime = JOKES_FILE.stat().st_mtime
     if _jokes_cache is not None and mtime == _jokes_cache_mtime:
         return _jokes_cache
     with open(JOKES_FILE, "r", encoding="utf-8") as f:
@@ -189,7 +197,7 @@ def save_json(path, data):
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         os.replace(tmp, str(path))
-    except:
+    except Exception:
         os.unlink(tmp) if os.path.exists(tmp) else None
         raise
 
@@ -559,14 +567,16 @@ async def get_jokes(
 @app.get("/api/jokes/search")
 async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10, ge=1, le=50)):
     """Full-text search using TF-IDF semantic search."""
-    results = _get_search_engine().search(q, top_k=limit)
+    engine = await asyncio.to_thread(_get_search_engine)
+    results = await asyncio.to_thread(engine.search, q, limit)
     return {"jokes": results, "total": len(results)}
 
 @app.post("/api/jokes/context")
 async def contextual_joke(request: JokeRequest):
     """Get contextually relevant jokes using semantic search + keyword boosting."""
     # Step 1: Semantic search
-    semantic_results = _get_search_engine().search(request.text, top_k=30)
+    engine = await asyncio.to_thread(_get_search_engine)
+    semantic_results = await asyncio.to_thread(engine.search, request.text, 30)
     
     # Step 2: Keyword matching for category boosting
     matching_cats = find_matching_categories(request.text)
@@ -607,7 +617,7 @@ async def contextual_joke(request: JokeRequest):
             "category": joke["category"],
             "score": joke.get("semantic_score", 0)
         })
-    save_json(HISTORY_FILE, history[-100:])
+    await asyncio.to_thread(save_json, HISTORY_FILE, history[-100:])
     
     return {
         "jokes": selected,
@@ -854,8 +864,10 @@ async def create_user_joke(req: UserJokeRequest):
 async def list_user_jokes(approved: int = Query(0)):
     """List user-submitted jokes."""
     conn = get_db()
-    rows = conn.execute("SELECT * FROM user_jokes WHERE approved = ? ORDER BY created_at DESC LIMIT 50", (approved,)).fetchall()
-    conn.close()
+    try:
+        rows = conn.execute("SELECT * FROM user_jokes WHERE approved = ? ORDER BY created_at DESC LIMIT 50", (approved,)).fetchall()
+    finally:
+        conn.close()
     result = []
     for r in rows:
         d = dict(r)
@@ -889,15 +901,17 @@ async def delete_user_joke(joke_id: int):
 async def update_preferences(user_hash: str, liked_cat: str = "", disliked_cat: str = ""):
     """Update user preferences."""
     conn = get_db()
-    conn.execute("""
-        INSERT INTO user_prefs (user_hash, liked_categories, disliked_categories, request_count) 
-        VALUES (?, ?, ?, 1)
-        ON CONFLICT(user_hash) DO UPDATE SET 
-            liked_categories = ?, disliked_categories = ?, 
-            request_count = request_count + 1, last_seen = CURRENT_TIMESTAMP
-    """, (user_hash, liked_cat, disliked_cat, liked_cat, disliked_cat))
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("""
+            INSERT INTO user_prefs (user_hash, liked_categories, disliked_categories, request_count) 
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT(user_hash) DO UPDATE SET 
+                liked_categories = ?, disliked_categories = ?, 
+                request_count = request_count + 1, last_seen = CURRENT_TIMESTAMP
+        """, (user_hash, liked_cat, disliked_cat, liked_cat, disliked_cat))
+        conn.commit()
+    finally:
+        conn.close()
     return {"status": "updated"}
 
 @app.get("/api/personalize/{user_hash}")
@@ -1002,12 +1016,14 @@ def track_event(event_type: str, category: str = None, joke_id: int = None, quer
     """Track an analytics event."""
     try:
         conn = get_db()
-        conn.execute(
-            "INSERT INTO analytics (event_type, category, joke_id, query, user_hash) VALUES (?,?,?,?,?)",
-            (event_type, category, joke_id, query, user_hash)
-        )
-        conn.commit()
-        conn.close()
+        try:
+            conn.execute(
+                "INSERT INTO analytics (event_type, category, joke_id, query, user_hash) VALUES (?,?,?,?,?)",
+                (event_type, category, joke_id, query, user_hash)
+            )
+            conn.commit()
+        finally:
+            conn.close()
     except Exception as e:
         print(f"⚠️ Analytics error: {e}")  # Log instead of silent pass
 
@@ -1015,29 +1031,33 @@ def track_event(event_type: str, category: str = None, joke_id: int = None, quer
 async def popular_topics(days: int = Query(7, ge=1, le=30)):
     """Get most popular topics/queries."""
     conn = get_db()
-    rows = conn.execute("""
-        SELECT category, COUNT(*) as cnt 
-        FROM analytics 
-        WHERE event_type = 'search' 
-        AND created_at >= datetime('now', ? || ' days')
-        GROUP BY category 
-        ORDER BY cnt DESC 
-        LIMIT 20
-    """, (f"-{days}",)).fetchall()
-    conn.close()
+    try:
+        rows = conn.execute("""
+            SELECT category, COUNT(*) as cnt 
+            FROM analytics 
+            WHERE event_type = 'search' 
+            AND created_at >= datetime('now', ? || ' days')
+            GROUP BY category 
+            ORDER BY cnt DESC 
+            LIMIT 20
+        """, (f"-{days}",)).fetchall()
+    finally:
+        conn.close()
     return {"popular": [dict(r) for r in rows], "period_days": days}
 
 @app.get("/api/analytics/stats")
 async def analytics_stats():
     """Get overall analytics."""
     conn = get_db()
-    total_events = conn.execute("SELECT COUNT(*) FROM analytics").fetchone()[0]
-    total_users = conn.execute("SELECT COUNT(DISTINCT user_hash) FROM analytics WHERE user_hash IS NOT NULL").fetchone()[0]
-    top_cats = conn.execute("""
-        SELECT category, COUNT(*) as cnt FROM analytics 
-        WHERE category IS NOT NULL GROUP BY category ORDER BY cnt DESC LIMIT 10
-    """).fetchall()
-    conn.close()
+    try:
+        total_events = conn.execute("SELECT COUNT(*) FROM analytics").fetchone()[0]
+        total_users = conn.execute("SELECT COUNT(DISTINCT user_hash) FROM analytics WHERE user_hash IS NOT NULL").fetchone()[0]
+        top_cats = conn.execute("""
+            SELECT category, COUNT(*) as cnt FROM analytics 
+            WHERE category IS NOT NULL GROUP BY category ORDER BY cnt DESC LIMIT 10
+        """).fetchall()
+    finally:
+        conn.close()
     return {
         "total_events": total_events,
         "unique_users": total_users,
@@ -1051,17 +1071,21 @@ async def analytics_stats():
 @app.get("/api/jokes/en")
 async def english_jokes(count: int = Query(5, ge=1, le=50)):
     """Get English-language jokes from database (en_* categories)."""
-    all_jokes = get_all_jokes()
-    en = [j for j in all_jokes if j.get("category", "").startswith("en_")]
+    db = load_jokes()
+    en = []
+    for cat, items in db.items():
+        if cat.startswith("en_"):
+            for j in items:
+                en.append({**j, "category": cat})
     if not en:
-        en = EN_JOKES  # fallback to hardcoded
+        en = list(EN_JOKES)  # fallback to hardcoded
     selected = random.sample(en, min(count, len(en)))
     return {"jokes": selected, "total": len(en)}
 
 # ============================================================
 # #34: PWA Support
 # ============================================================
-@app.get("/sw.js", response_class=HTMLResponse)
+@app.get("/sw.js")
 async def service_worker():
     sw = """
 const CACHE_NAME = 'anekdot-v3';
@@ -1079,7 +1103,7 @@ self.addEventListener('fetch', e => {
     );
 });
 """
-    return HTMLResponse(content=sw, media_type="application/javascript")
+    return Response(content=sw, media_type="application/javascript")
 
 @app.get("/manifest.json")
 async def web_manifest():
@@ -1113,18 +1137,24 @@ async def alice_webhook(request: dict):
         text = "Я подбираю анекдоты по теме! Скажите, например: «расскажи анекдот про работу» или «шутка про котиков»."
     elif "случайный" in command or "любой" in command:
         db = load_jokes()
-        cat = random.choice(list(db.keys()))
-        joke = random.choice(db[cat])
-        text = joke["text"]
+        if not db:
+            text = "Извините, база анекдотов пока пуста."
+        else:
+            cat = random.choice(list(db.keys()))
+            joke = random.choice(db[cat]) if db[cat] else {"text": "Категория пуста."}
+            text = joke["text"]
     else:
         data = await api_post("/api/jokes/context", {"text": original_utterance, "count": 1})
         if data and data.get("jokes"):
             text = data["jokes"][0]["text"]
         else:
             db = load_jokes()
-            cat = random.choice(list(db.keys()))
-            joke = random.choice(db[cat])
-            text = f"Не нашёл подходящий, но вот: {joke['text']}"
+            if db:
+                cat = random.choice(list(db.keys()))
+                joke = random.choice(db[cat]) if db[cat] else {"text": ""}
+                text = f"Не нашёл подходящий, но вот: {joke['text']}"
+            else:
+                text = "Не нашёл подходящий анекдот."
     
     return {
         "response": {
@@ -1363,6 +1393,9 @@ async def speech_to_text_file(file: UploadFile = None, language: str = "auto"):
         
         return {"text": text, "vad": vad_result, "model": model_used}
     except Exception as e:
+        # Cleanup temp files on error
+        for p in [tmp_path, tmp_path + ".wav"]:
+            if os.path.exists(p): os.unlink(p)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1391,9 +1424,9 @@ async def voice_status():
         "stt_engine": "whisper.cpp" if whisper_ok else ("faster_whisper" if fw_ok else "none"),
         "vad_available": silero_ok,
         "onnx_runtime": onnx_ok,
-        "whisper_cli": WHISPER_CLI,
-        "whisper_model": WHISPER_MODEL,
-        "silero_vad": SILERO_VAD_MODEL,
+        "whisper_cli": os.path.basename(WHISPER_CLI),
+        "whisper_model": os.path.basename(WHISPER_MODEL),
+        "silero_vad": os.path.basename(SILERO_VAD_MODEL),
         "whisper_model_size": f"{os.path.getsize(WHISPER_MODEL) // 1024 // 1024}MB" if os.path.exists(WHISPER_MODEL) else "not found",
         "silero_vad_size": f"{os.path.getsize(SILERO_VAD_MODEL) // 1024}KB" if os.path.exists(SILERO_VAD_MODEL) else "not found",
     }
@@ -1414,9 +1447,6 @@ async def text_to_speech(request: dict):
         # Ограничиваем длину (gTTS лимит ~5000 символов)
         text = text[:2000]
         
-        tts = gTTS(text=text, lang='ru', slow=False)
-        
-        # Сохраняем в data/tts/
         tts_dir = BASE_DIR / "data" / "tts"
         tts_dir.mkdir(parents=True, exist_ok=True)
         
@@ -1425,7 +1455,10 @@ async def text_to_speech(request: dict):
         fpath = tts_dir / fname
         
         if not fpath.exists():
-            tts.save(str(fpath))
+            def _gen_tts():
+                tts = gTTS(text=text, lang='ru', slow=False)
+                tts.save(str(fpath))
+            await asyncio.to_thread(_gen_tts)
         
         return {
             "text": text,
@@ -1434,9 +1467,9 @@ async def text_to_speech(request: dict):
             "generator": "gTTS (Google TTS, free)"
         }
     except ImportError:
-        return {"error": "gTTS not installed. Run: pip install gTTS"}
+        raise HTTPException(status_code=503, detail="gTTS not installed. Run: pip install gTTS")
     except Exception as e:
-        return {"error": f"TTS failed: {str(e)}"}
+        raise HTTPException(status_code=500, detail=f"TTS failed: {str(e)}")
 
 
 
@@ -1495,7 +1528,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.11.0"
+        "version": "3.12.0"
     }
 
 # ============================================================
@@ -1570,5 +1603,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"Запуск Анекдот в тему v3.11.0 на http://localhost:{port}")
+    print(f"Запуск Анекдот в тему v3.12.0 на http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

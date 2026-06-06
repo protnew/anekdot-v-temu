@@ -1,6 +1,6 @@
 """
 Анекдот в Тему — Discord Bot
-Slash-команды: /joke, /top, /stats, /categories, /cat
+Команды: /joke, /top, /stats, /categories, /cat, /search
 Кнопки: 🔀 Ещё, ⭐ Оценить, 🗑 Удалить
 """
 
@@ -8,8 +8,9 @@ import os
 import logging
 import requests
 import discord
-from discord import Embed, Colour
+from discord import Embed
 from discord.ext import commands
+from discord import app_commands
 from discord.ui import View, Button
 
 # ── Логирование ──────────────────────────────────────────────
@@ -19,63 +20,47 @@ logging.basicConfig(
 )
 log = logging.getLogger("joke_bot")
 
-# ── Конфиг из env ────────────────────────────────────────────
+# ── Конфиг ──────────────────────────────────────────────────
+API_BASE = os.environ.get("JOKE_API", "http://localhost:8000")
 TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
-API_BASE = os.environ.get("API_BASE", "http://localhost:8000").rstrip("/")
+PURPLE = Colour.from_rgb(88, 101, 242)
 
-# ── Цвет брендинга ───────────────────────────────────────────
-PURPLE = Colour(0x7B2FF7)
+# ── API helpers ─────────────────────────────────────────────
+def api_get(path: str, params: dict | None = None):
+    try:
+        r = requests.get(f"{API_BASE}{path}", params=params, timeout=10)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        log.warning("GET %s error: %s", path, e)
+        return None
 
-# ── Bot setup ────────────────────────────────────────────────
+def api_post(path: str, json_data: dict | None = None):
+    try:
+        r = requests.post(f"{API_BASE}{path}", json=json_data, timeout=10)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        log.warning("POST %s error: %s", path, e)
+        return None
+
+def joke_embed(joke: dict) -> Embed:
+    text = joke.get("text", "…")[:4096]
+    rating = joke.get("rating", 0)
+    category = joke.get("category", "")
+    embed = Embed(
+        title=f"😂 Анекдот ({category})" if category else "😂 Анекдот",
+        description=text,
+        colour=PURPLE,
+    )
+    embed.set_footer(text=f"⭐ {rating}  |  ID: {joke.get('id', '?')}")
+    return embed
+
+# ── Bot setup (discord.py + app_commands) ───────────────────
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
-# ── Хелперы API ──────────────────────────────────────────────
-def api_get(path: str, params: dict | None = None, timeout: int = 10):
-    """GET-запрос к API. Возвращает JSON или None."""
-    url = f"{API_BASE}{path}"
-    try:
-        r = requests.get(url, params=params, timeout=timeout)
-        r.raise_for_status()
-        return r.json()
-    except Exception as exc:
-        log.error("API GET %s failed: %s", url, exc)
-        return None
-
-
-def api_post(path: str, json: dict | None = None, timeout: int = 10):
-    """POST-запрос к API. Возвращает JSON или None."""
-    url = f"{API_BASE}{path}"
-    try:
-        r = requests.post(url, json=json, timeout=timeout)
-        r.raise_for_status()
-        return r.json()
-    except Exception as exc:
-        log.error("API POST %s failed: %s", url, exc)
-        return None
-
-
-def joke_embed(data: dict) -> Embed:
-    """Создать Embed для шутки."""
-    text = data.get("text") or data.get("joke") or data.get("content") or "😅 Не удалось загрузить текст"
-    category = data.get("category") or data.get("tags") or ""
-    rating = data.get("rating") or data.get("score") or 0
-    joke_id = data.get("id", "?")
-
-    embed = Embed(
-        title="😂 Анекдот в Тему",
-        description=text,
-        colour=PURPLE,
-    )
-    if category:
-        embed.add_field(name="📂 Категория", value=str(category), inline=True)
-    embed.add_field(name="⭐ Рейтинг", value=f"**{rating}**", inline=True)
-    embed.set_footer(text=f"ID: {joke_id}")
-    return embed
-
-
-# ── Views / Кнопки ──────────────────────────────────────────
 class JokeView(View):
     """Кнопки под сообщением с шуткой."""
 
@@ -85,11 +70,13 @@ class JokeView(View):
         self.category = category
         self.topic = topic
 
-    @Button(label="🔀 Ещё", style=discord.ButtonStyle.secondary, emoji="🔀")
+    @discord.ui.button(label="🔀 Ещё", style=discord.ButtonStyle.secondary, emoji="🔀")
     async def btn_more(self, interaction: discord.Interaction, _button: Button):
         """Показать ещё одну шутку."""
         if self.topic:
-            data = api_get("/api/jokes/context", params={"q": self.topic})
+            data = api_post("/api/jokes/context", json_data={"text": self.topic, "count": 1})
+            if data and data.get("jokes"):
+                data = data["jokes"][0]
         elif self.category:
             data = api_get("/api/joke/random", params={"category": self.category})
         else:
@@ -104,33 +91,32 @@ class JokeView(View):
         view = JokeView(jid, category=self.category, topic=self.topic)
         await interaction.response.send_message(embed=embed, view=view)
 
-    @Button(label="⭐ Оценить", style=discord.ButtonStyle.primary, emoji="⭐")
+    @discord.ui.button(label="⭐ Оценить", style=discord.ButtonStyle.primary, emoji="⭐")
     async def btn_rate(self, interaction: discord.Interaction, _button: Button):
         """Поставить +1 к рейтингу."""
-        result = api_post(f"/api/joke/{self.joke_id}/rate", json={"score": 1})
-        if result and result.get("ok"):
+        result = api_post("/api/rate", json_data={"joke_id": self.joke_id, "rating": 5})
+        if result:
             await interaction.response.send_message("⭐ Спасибо за оценку!", ephemeral=True)
         else:
             await interaction.response.send_message("⚠️ Не удалось оценить.", ephemeral=True)
 
-    @Button(label="🗑 Удалить", style=discord.ButtonStyle.danger, emoji="🗑")
+    @discord.ui.button(label="🗑 Удалить", style=discord.ButtonStyle.danger, emoji="🗑")
     async def btn_delete(self, interaction: discord.Interaction, _button: Button):
         """Удалить сообщение с шуткой."""
         await interaction.message.delete()
 
 
-# ── Slash-команды ────────────────────────────────────────────
-@bot.slash_command(name="joke", description="Получить анекдот")
+# ── Slash-команды (app_commands) ────────────────────────────
+@bot.tree.command(name="joke", description="Получить анекдот")
 async def cmd_joke(
     interaction: discord.Interaction,
-    topic: str = commands.Param(
-        default=None,
-        description="Тема / контекст для подбора анекдота",
-    ),
+    topic: str = None,
 ):
     """Случайная шутка или шутка по теме."""
     if topic:
-        data = api_get("/api/jokes/context", params={"q": topic})
+        data = api_post("/api/jokes/context", json_data={"text": topic, "count": 1})
+        if data and data.get("jokes"):
+            data = data["jokes"][0]
     else:
         data = api_get("/api/joke/random")
 
@@ -144,16 +130,17 @@ async def cmd_joke(
     await interaction.response.send_message(embed=embed, view=view)
 
 
-@bot.slash_command(name="top", description="Топ-5 анекдотов по рейтингу")
+@bot.tree.command(name="top", description="Топ-5 анекдотов по рейтингу")
 async def cmd_top(interaction: discord.Interaction):
     """Показать 5 лучших шуток."""
     data = api_get("/api/jokes/social/top", params={"limit": 5})
-    if not data or not isinstance(data, list):
+    if not data or not isinstance(data, dict) or "jokes" not in data:
         await interaction.response.send_message("⚠️ Не удалось загрузить топ.", ephemeral=True)
         return
 
+    jokes = data["jokes"]
     embed = Embed(title="🏆 Топ-5 Анекдотов", colour=PURPLE)
-    for i, joke in enumerate(data[:5], start=1):
+    for i, joke in enumerate(jokes[:5], start=1):
         text = (joke.get("text") or joke.get("joke") or "")[:200]
         rating = joke.get("rating") or joke.get("score") or 0
         embed.add_field(name=f"#{i}  ⭐ {rating}", value=text, inline=False)
@@ -161,7 +148,7 @@ async def cmd_top(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@bot.slash_command(name="stats", description="Статистика сервиса")
+@bot.tree.command(name="stats", description="Статистика сервиса")
 async def cmd_stats(interaction: discord.Interaction):
     """Статистика: количество шуток, категорий и т.д."""
     data = api_get("/api/stats")
@@ -176,7 +163,7 @@ async def cmd_stats(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@bot.slash_command(name="categories", description="Список всех категорий")
+@bot.tree.command(name="categories", description="Список всех категорий")
 async def cmd_categories(interaction: discord.Interaction):
     """Показать доступные категории."""
     data = api_get("/api/categories")
@@ -197,10 +184,10 @@ async def cmd_categories(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@bot.slash_command(name="cat", description="Анекдот из конкретной категории")
+@bot.tree.command(name="cat", description="Анекдот из конкретной категории")
 async def cmd_cat(
     interaction: discord.Interaction,
-    name: str = commands.Param(description="Название категории"),
+    name: str,
 ):
     """Случайная шутка из заданной категории."""
     data = api_get("/api/joke/random", params={"category": name})
@@ -214,10 +201,10 @@ async def cmd_cat(
     await interaction.response.send_message(embed=embed, view=view)
 
 
-@bot.slash_command(name="search", description="Поиск анекдотов по тексту")
+@bot.tree.command(name="search", description="Поиск анекдотов по тексту")
 async def cmd_search(
     interaction: discord.Interaction,
-    query: str = commands.Param(description="Поисковый запрос"),
+    query: str,
 ):
     """Полнотекстовый поиск шуток."""
     data = api_get("/api/jokes/search", params={"q": query, "limit": 3})
@@ -237,6 +224,7 @@ async def cmd_search(
 # ── Запуск ───────────────────────────────────────────────────
 @bot.event
 async def on_ready():
+    await bot.tree.sync()
     log.info("Бот %s запущен (%s)", bot.user, bot.user.id)
 
 
