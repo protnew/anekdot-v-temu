@@ -18,7 +18,8 @@ Inline mode:
     python bot/telegram_bot.py
 """
 import os, html
-from urllib.parse import quote, sys, json, logging, hashlib
+import sys, json, logging, hashlib
+from urllib.parse import quote
 
 try:
     import telebot

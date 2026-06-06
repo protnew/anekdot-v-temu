@@ -1,4 +1,4 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.10.0
+"""Анекдот в тему — AI-powered contextual joke app v3.10.1
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -102,7 +102,8 @@ async def lifespan(app):
                         print("💾 Periodic rating flush OK")
                     except Exception as e:
                         print(f"⚠️ Rating flush error: {e}")
-    _asyncio.create_task(_flush_loop())
+    global _flush_task
+    _flush_task = _asyncio.create_task(_flush_loop())
     yield
     # Shutdown (#15: save TF-IDF + close SQLite + save ratings)
     global _pending_rating_save, _jokes_cache, search_engine
@@ -116,7 +117,7 @@ async def lifespan(app):
         search_engine = None
     print("👋 Graceful shutdown complete")
 
-app = FastAPI(title="Анекдот в тему", version="3.10.0", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.10.1", lifespan=lifespan)
 
 # Allow CORS for local development (emulator from file://)
 app.add_middleware(
@@ -151,8 +152,10 @@ def load_jokes():
     return _jokes_cache
 
 def _invalidate_jokes_cache():
-    global _jokes_cache
+    global _jokes_cache, _joke_by_id, _joke_by_id_built
     _jokes_cache = None
+    _joke_by_id = {}
+    _joke_by_id_built = False
 
 # Periodic save for ratings (don't block API responses)
 _pending_rating_save = False
@@ -1219,7 +1222,7 @@ async def speech_to_text(request: dict):
             await _run_subprocess(["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path], timeout=10)
         
         # Step 1: Silero VAD — check if there's actual speech
-        vad_result = _silero_vad_check(wav_path)
+        vad_result = await asyncio.to_thread(_silero_vad_check, wav_path)
         if not vad_result["has_speech"]:
             os.unlink(tmp_path)
             if wav_path != tmp_path:
@@ -1300,7 +1303,7 @@ async def speech_to_text_file(file: UploadFile = None):
             ["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path], timeout=10)
         
         # VAD check
-        vad_result = _silero_vad_check(wav_path)
+        vad_result = await asyncio.to_thread(_silero_vad_check, wav_path)
         if not vad_result["has_speech"]:
             for p in [tmp_path, wav_path]:
                 if os.path.exists(p): os.unlink(p)
@@ -1314,7 +1317,7 @@ async def speech_to_text_file(file: UploadFile = None):
         if use_fw:
             from faster_whisper import WhisperModel
             fw_model = WhisperModel("base", device="cpu", compute_type="int8")
-            segments, info = fw_model.transcribe(wav_path)
+            segments, info = await asyncio.to_thread(fw_model.transcribe, wav_path)
             text = " ".join(s.text for s in segments).strip()
             model_used = "faster_whisper base (CPU)"
         else:
@@ -1463,7 +1466,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.10.0"
+        "version": "3.10.1"
     }
 
 # ============================================================
@@ -1527,16 +1530,16 @@ async def moderate_text(request: ModerateRequest):
 @app.post("/api/moderate/profanity")
 async def check_profanity(request: ModerateRequest):
     """Проверить только мат (ProfanityFilter)."""
-    return _moderator._profanity.check(request.text)
+    return _moderator.profanity.check(request.text)
 
 @app.post("/api/moderate/spam")
 async def check_spam(request: ModerateRequest):
     """Проверить только спам (SpamDetector)."""
-    result = _moderator._spam.is_spam(request.text)
+    result = _moderator.spam.is_spam(request.text)
     return {"is_spam": result, "text": request.text}
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"Запуск Анекдот в тему v3.10.0 на http://localhost:{port}")
+    print(f"Запуск Анекдот в тему v3.10.1 на http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

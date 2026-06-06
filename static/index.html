@@ -668,12 +668,16 @@ async function loadFavorites() {
 
 function renderFavorites() {
     const list = document.getElementById('favoritesList');
-    // #29: Use cached data from loadFavorites instead of double fetch
-    if (_favoriteJokes && _favoriteJokes.length) {
-        list.innerHTML = _favoriteJokes.map(j => renderJokeCard(j)).join('');
-    } else {
-        list.innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
-    }
+    // Always fetch fresh data when switching to favorites tab
+    api('/api/favorites').then(data => {
+        if (data && data.jokes && data.jokes.length) {
+            _favoriteJokes = data.jokes;
+            list.innerHTML = data.jokes.map(j => renderJokeCard(j)).join('');
+        } else {
+            _favoriteJokes = [];
+            list.innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
+        }
+    });
 }
 
 function renderJokeCard(joke, collapsed = false) {
