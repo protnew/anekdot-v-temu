@@ -1,4 +1,4 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.12.0
+"""Анекдот в тему — AI-powered contextual joke app v3.13.0
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -12,7 +12,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from collections import defaultdict
 from fastapi import FastAPI, HTTPException, Query, UploadFile, Request
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
@@ -85,7 +85,7 @@ def _build_joke_by_id():
     if _joke_by_id_built:
         return
     all_jokes = get_all_jokes()
-    _joke_by_id = {j["id"]: j for j in all_jokes}
+    _joke_by_id = {j["id"]: j for j in all_jokes if "id" in j}
     _joke_by_id_built = True
 
 # ============================================================
@@ -131,7 +131,7 @@ async def lifespan(app):
         search_engine = None
     print("👋 Graceful shutdown complete")
 
-app = FastAPI(title="Анекдот в тему", version="3.12.0", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.13.0", lifespan=lifespan)
 
 # Allow CORS for local development (emulator from file://)
 app.add_middleware(
@@ -557,12 +557,13 @@ async def get_jokes(
     else:
         jokes = all_jokes
     
+    total = len(jokes)
     if randomize:
         jokes = random.sample(jokes, min(count, len(jokes)))
     else:
         jokes = jokes[offset:offset + count]
     
-    return {"jokes": jokes, "total": len(jokes)}
+    return {"jokes": jokes, "total": total}
 
 @app.get("/api/jokes/search")
 async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10, ge=1, le=50)):
@@ -655,7 +656,7 @@ async def generate_joke(request: JokeRequest):
     else:
         templates = all_jokes
     
-    template = random.choice(templates if templates else all_jokes)
+    template = random.choice(templates if templates else (all_jokes if all_jokes else [{"text": "Шуток пока нет.", "rating": 0, "tags": []}]))
     
     return {
         "joke": {
@@ -961,8 +962,12 @@ async def like_joke(joke_id: int):
             _build_joke_by_id()
             joke = _joke_by_id.get(joke_id)
             if joke:
-                conn.execute("INSERT INTO jokes (id, category, text, rating, tags, likes) VALUES (?,?,?,?,?,1)",
-                            (joke["id"], joke["category"], joke["text"], joke.get("rating", 4.0), json.dumps(joke.get("tags",[]))))
+                try:
+                    conn.execute("INSERT INTO jokes (id, category, text, rating, tags, likes) VALUES (?,?,?,?,?,1)",
+                                (joke["id"], joke["category"], joke["text"], joke.get("rating", 4.0), json.dumps(joke.get("tags",[]))))
+                except Exception:
+                    # Concurrent INSERT — already exists, just update
+                    conn.execute("UPDATE jokes SET likes = likes + 1 WHERE id = ?", (joke_id,))
             else:
                 raise HTTPException(404, "Joke not found")
         conn.commit()
@@ -977,12 +982,13 @@ async def like_joke(joke_id: int):
 async def top_jokes(period: str = Query("day"), count: int = Query(10, ge=1, le=50)):
     """Get top jokes by likes/rating. Results cached for 5 minutes (#23)."""
     global _top_cache
+    cache_key = f"{period}_{count}"
     async with _top_cache_lock:
         now = time.time()
-        if now - _top_cache["timestamp"] > _TOP_CACHE_TTL or not _top_cache["jokes"]:
+        if now - _top_cache.get("timestamp", 0) > _TOP_CACHE_TTL or _top_cache.get("key") != cache_key or not _top_cache.get("jokes"):
             all_jokes = get_all_jokes()
             sorted_jokes = sorted(all_jokes, key=lambda j: j.get("rating", 0), reverse=True)
-            _top_cache = {"jokes": sorted_jokes[:100], "timestamp": now}
+            _top_cache = {"jokes": sorted_jokes[:100], "timestamp": now, "key": cache_key}
     return {"jokes": _top_cache["jokes"][:count], "period": period}
 
 # ============================================================
@@ -1156,10 +1162,14 @@ async def alice_webhook(request: dict):
             else:
                 text = "Не нашёл подходящий анекдот."
     
+    # Alice has 1024 char limit for text/tts
+    text_safe = text[:1024]
+    tts_safe = text_safe.replace("\n", ". ")
+    
     return {
         "response": {
-            "text": text,
-            "tts": text.replace("\n", ". "),
+            "text": text_safe,
+            "tts": tts_safe,
             "end_session": False
         },
         "version": "1.0"
@@ -1330,8 +1340,12 @@ async def speech_to_text(request: dict):
             "vad_model": "Energy VAD"
         }
     except (subprocess.TimeoutExpired, TimeoutError):
+        for p in [tmp_path, wav_path]:
+            if 'tmp_path' in dir() and os.path.exists(p): os.unlink(p)
         raise HTTPException(status_code=504, detail="whisper timeout (30s)")
     except Exception as e:
+        for p in [tmp_path, wav_path]:
+            if 'tmp_path' in dir() and os.path.exists(p): os.unlink(p)
         raise HTTPException(status_code=500, detail=f"STT error: {str(e)}")
 
 
@@ -1380,8 +1394,9 @@ async def speech_to_text_file(file: UploadFile = None, language: str = "auto"):
             text = await asyncio.to_thread(_transcribe)
             model_used = "faster_whisper base (CPU)"
         else:
+            lang_arg = language if language != "auto" else "auto"
             rc, stdout, stderr = await _run_subprocess(
-                [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", "auto", "-f", wav_path,
+                [WHISPER_CLI, "-m", WHISPER_MODEL, "-l", lang_arg, "-f", wav_path,
                  "--no-timestamps", "-t", "4"], timeout=30
             )
             text = stdout.decode().strip()
@@ -1528,7 +1543,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.12.0"
+        "version": "3.13.0"
     }
 
 # ============================================================
@@ -1603,5 +1618,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"Запуск Анекдот в тему v3.12.0 на http://localhost:{port}")
+    print(f"Запуск Анекдот в тему v3.13.0 на http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

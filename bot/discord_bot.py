@@ -133,7 +133,7 @@ async def cmd_joke(
 @bot.tree.command(name="top", description="Топ-5 анекдотов по рейтингу")
 async def cmd_top(interaction: discord.Interaction):
     """Показать 5 лучших шуток."""
-    data = api_get("/api/jokes/social/top", params={"limit": 5})
+    data = api_get("/api/jokes/social/top", params={"count": 5})
     if not data or not isinstance(data, dict) or "jokes" not in data:
         await interaction.response.send_message("⚠️ Не удалось загрузить топ.", ephemeral=True)
         return

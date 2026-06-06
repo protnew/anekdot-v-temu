@@ -663,21 +663,30 @@ async function loadFavorites() {
         favorites = data.jokes.map(j => j.id);
         _favoriteJokes = data.jokes;
     }
-    renderFavorites();
+    renderFavoritesFromCache();
 }
 
 function renderFavorites() {
-    const list = document.getElementById('favoritesList');
-    // Always fetch fresh data when switching to favorites tab
+    // Fetch fresh data then render
     api('/api/favorites').then(data => {
         if (data && data.jokes && data.jokes.length) {
             _favoriteJokes = data.jokes;
-            list.innerHTML = data.jokes.map(j => renderJokeCard(j)).join('');
+            favorites = data.jokes.map(j => j.id);
+            renderFavoritesFromCache();
         } else {
             _favoriteJokes = [];
-            list.innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
+            document.getElementById('favoritesList').innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
         }
     });
+}
+
+function renderFavoritesFromCache() {
+    const list = document.getElementById('favoritesList');
+    if (_favoriteJokes && _favoriteJokes.length) {
+        list.innerHTML = _favoriteJokes.map(j => renderJokeCard(j)).join('');
+    } else {
+        list.innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
+    }
 }
 
 function renderJokeCard(joke, collapsed = false) {

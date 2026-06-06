@@ -157,7 +157,7 @@ def cmd_stats(msg):
         bot.reply_to(msg, "😔 API недоступен.")
 
 
-@bot.message_handler(func=lambda m: m.text and m.text.startswith("/cat "))
+@bot.message_handler(func=lambda m: m.text and (m.text.startswith("/cat ") or m.text.startswith("/cat_")))
 def cmd_category(msg):
     cat = msg.text.replace("/cat", "").strip().replace("_", " ")
     if not cat:
