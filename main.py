@@ -1,4 +1,4 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.10.1
+"""Анекдот в тему — AI-powered contextual joke app v3.11.0
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -56,16 +56,16 @@ class RateLimiter:
 _rate_limiter = RateLimiter(60, 60)
 
 # ============================================================
-# #8, #9: AsyncIO locks for race conditions
+# #8, #9: AsyncIO locks for race conditions (created as None, init in lifespan)
 # ============================================================
-_rating_lock = asyncio.Lock()
-_favorites_lock = asyncio.Lock()
+_rating_lock = None
+_favorites_lock = None
 
 # ============================================================
 # #23: Top jokes cache (TTL 5 minutes)
 # ============================================================
 _top_cache = {"jokes": [], "timestamp": 0}
-_top_cache_lock = asyncio.Lock()
+_top_cache_lock = None
 _TOP_CACHE_TTL = 300  # 5 minutes
 
 # ============================================================
@@ -87,6 +87,11 @@ def _build_joke_by_id():
 # ============================================================
 @asynccontextmanager
 async def lifespan(app):
+    # Startup: init asyncio locks (can't create before event loop)
+    global _rating_lock, _favorites_lock, _top_cache_lock
+    _rating_lock = asyncio.Lock()
+    _favorites_lock = asyncio.Lock()
+    _top_cache_lock = asyncio.Lock()
     # Startup
     import asyncio as _asyncio
     async def _flush_loop():
@@ -105,6 +110,9 @@ async def lifespan(app):
     global _flush_task
     _flush_task = _asyncio.create_task(_flush_loop())
     yield
+    # Shutdown (#12: cancel flush task)
+    if _flush_task and not _flush_task.done():
+        _flush_task.cancel()
     # Shutdown (#15: save TF-IDF + close SQLite + save ratings)
     global _pending_rating_save, _jokes_cache, search_engine
     async with _rating_lock:
@@ -117,7 +125,7 @@ async def lifespan(app):
         search_engine = None
     print("👋 Graceful shutdown complete")
 
-app = FastAPI(title="Анекдот в тему", version="3.10.1", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.11.0", lifespan=lifespan)
 
 # Allow CORS for local development (emulator from file://)
 app.add_middleware(
@@ -173,8 +181,17 @@ def load_json(path, default):
     return default
 
 def save_json(path, data):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    """Atomic write: write to temp file, then rename (no corruption on crash)."""
+    import tempfile
+    dir_path = os.path.dirname(str(path))
+    fd, tmp = tempfile.mkstemp(dir=dir_path, suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, str(path))
+    except:
+        os.unlink(tmp) if os.path.exists(tmp) else None
+        raise
 
 def get_all_jokes():
     db = load_jokes()
@@ -467,8 +484,10 @@ class JokeRequest(BaseModel):
     @field_validator('count')
     @classmethod
     def validate_count(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError("count не может быть отрицательным")
+        if v <= 0:
+            raise ValueError("count должен быть > 0")
+        if v > 50:
+            v = 50
         return v
 
 class FavoriteRequest(BaseModel):
@@ -608,7 +627,7 @@ async def generate_joke(request: JokeRequest):
     if llm_joke:
         return {
             "joke": {
-                "id": int(time.time() * 1000) % 100000 + random.randint(1, 999),
+                "id": int(time.time() * 1000000) % 1000000 + random.randint(1, 99999),
                 "text": llm_joke,
                 "rating": 4.5,
                 "tags": matching_cats[:3] + ["ai-generated", "llm"],
@@ -630,7 +649,7 @@ async def generate_joke(request: JokeRequest):
     
     return {
         "joke": {
-            "id": int(time.time() * 1000) % 100000 + random.randint(1, 999),
+            "id": int(time.time() * 1000000) % 1000000 + random.randint(1, 99999),
             "text": f"[AI-вариация по теме \"{matching_cats[0] if matching_cats else 'жизнь'}\"]\n{template['text']}",
             "rating": round(template.get("rating", 4.0) + random.uniform(-0.5, 0.5), 1),
             "tags": template.get("tags", []) + ["ai-generated", "template"],
@@ -1098,7 +1117,7 @@ async def alice_webhook(request: dict):
         joke = random.choice(db[cat])
         text = joke["text"]
     else:
-        data = api_post("/api/jokes/context", {"text": original_utterance, "count": 1})
+        data = await api_post("/api/jokes/context", {"text": original_utterance, "count": 1})
         if data and data.get("jokes"):
             text = data["jokes"][0]["text"]
         else:
@@ -1116,11 +1135,11 @@ async def alice_webhook(request: dict):
         "version": "1.0"
     }
 
-def api_post(path, data):
-    """Internal API call for Alice webhook."""
+async def api_post(path, data):
+    """Internal API call for Alice webhook (async to avoid event loop blocking)."""
     import urllib.request
     base_url = os.environ.get("BASE_URL", "http://localhost:8000")
-    try:
+    def _do():
         req = urllib.request.Request(
             f"{base_url}{path}",
             data=json.dumps(data).encode(),
@@ -1128,6 +1147,8 @@ def api_post(path, data):
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
             return json.loads(resp.read())
+    try:
+        return await asyncio.to_thread(_do)
     except Exception as e:
         print(f"api_post error ({path}): {e}")
         return None
@@ -1236,9 +1257,13 @@ async def speech_to_text(request: dict):
         if use_faster_whisper:
             # faster_whisper (Python) — works on Windows without compiled binary
             from faster_whisper import WhisperModel
-            fw_model = WhisperModel("base", device="cpu", compute_type="int8")
-            segments, info = fw_model.transcribe(wav_path, language=language if language != "auto" else None)
-            text = " ".join(s.text for s in segments).strip()
+            if not hasattr(speech_to_text, "_fw_model"): speech_to_text._fw_model = WhisperModel("base", device="cpu", compute_type="int8")
+            fw_model = speech_to_text._fw_model
+            lang_arg = language if language != "auto" else None
+            def _fw_transcribe():
+                segs, _ = fw_model.transcribe(wav_path, language=lang_arg)
+                return " ".join(s.text for s in segs).strip()
+            text = await asyncio.to_thread(_fw_transcribe)
             model_name = "faster_whisper base (CPU)"
         else:
             # whisper.cpp (Linux/Docker) — faster, compiled binary
@@ -1249,7 +1274,7 @@ async def speech_to_text(request: dict):
             # Also try to read the .txt file whisper may have created
             txt_path = wav_path + ".txt"
             if os.path.exists(txt_path):
-                with open(txt_path) as f:
+                with open(txt_path, encoding='utf-8') as f:
                     file_text = f.read().strip()
                 if len(file_text) > len(text):
                     text = file_text
@@ -1274,14 +1299,14 @@ async def speech_to_text(request: dict):
             "model": model_name,
             "vad_model": "Energy VAD"
         }
-    except subprocess.TimeoutExpired:
+    except (subprocess.TimeoutExpired, TimeoutError):
         raise HTTPException(status_code=504, detail="whisper timeout (30s)")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"STT error: {str(e)}")
 
 
 @app.post("/api/voice/stt/file")
-async def speech_to_text_file(file: UploadFile = None):
+async def speech_to_text_file(file: UploadFile = None, language: str = "auto"):
     """Upload audio file for STT. Accepts WAV/MP3/OGG/FLAC. Max 25MB."""
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded")
@@ -1316,9 +1341,13 @@ async def speech_to_text_file(file: UploadFile = None):
         
         if use_fw:
             from faster_whisper import WhisperModel
-            fw_model = WhisperModel("base", device="cpu", compute_type="int8")
-            segments, info = await asyncio.to_thread(fw_model.transcribe, wav_path)
-            text = " ".join(s.text for s in segments).strip()
+            if not hasattr(speech_to_text_file, "_fw_model"): speech_to_text_file._fw_model = WhisperModel("base", device="cpu", compute_type="int8")
+            fw_model = speech_to_text_file._fw_model
+            lang_arg = language if language != "auto" else None
+            def _transcribe():
+                segs, _ = fw_model.transcribe(wav_path, language=lang_arg)
+                return " ".join(s.text for s in segs).strip()
+            text = await asyncio.to_thread(_transcribe)
             model_used = "faster_whisper base (CPU)"
         else:
             rc, stdout, stderr = await _run_subprocess(
@@ -1466,7 +1495,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.10.1"
+        "version": "3.11.0"
     }
 
 # ============================================================
@@ -1541,5 +1570,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"Запуск Анекдот в тему v3.10.1 на http://localhost:{port}")
+    print(f"Запуск Анекдот в тему v3.11.0 на http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
