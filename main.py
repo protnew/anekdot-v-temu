@@ -1,4 +1,4 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.9.0
+"""Анекдот в тему — AI-powered contextual joke app v3.10.0
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -7,12 +7,14 @@
 - User CRUD, analytics, social, personalization
 - PWA, multi-language, moderation
 """
-import json, os, random, hashlib, time, subprocess, tempfile, base64, asyncio
+import json, os, random, hashlib, time, subprocess, tempfile, base64, asyncio, threading
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Query, UploadFile
+from contextlib import asynccontextmanager
+from collections import defaultdict
+from fastapi import FastAPI, HTTPException, Query, UploadFile, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from moderation import ProfanityFilter, SpamDetector, ContentModerator
 
@@ -31,7 +33,90 @@ async def _run_subprocess(args, timeout=30):
         proc.kill()
         raise TimeoutError(f"Command timed out: {args[0]}")
 
-app = FastAPI(title="Анекдот в тему", version="3.9.0")
+# ============================================================
+# #14: In-memory rate limiter (60 requests/minute per IP)
+# ============================================================
+class RateLimiter:
+    def __init__(self, max_requests: int = 60, window: int = 60):
+        self.max_requests = max_requests
+        self.window = window
+        self._requests: dict = defaultdict(list)
+        self._lock = asyncio.Lock()
+
+    async def is_allowed(self, ip: str) -> bool:
+        async with self._lock:
+            now = time.time()
+            # Clean old entries
+            self._requests[ip] = [t for t in self._requests[ip] if now - t < self.window]
+            if len(self._requests[ip]) >= self.max_requests:
+                return False
+            self._requests[ip].append(now)
+            return True
+
+_rate_limiter = RateLimiter(60, 60)
+
+# ============================================================
+# #8, #9: AsyncIO locks for race conditions
+# ============================================================
+_rating_lock = asyncio.Lock()
+_favorites_lock = asyncio.Lock()
+
+# ============================================================
+# #23: Top jokes cache (TTL 5 minutes)
+# ============================================================
+_top_cache = {"jokes": [], "timestamp": 0}
+_top_cache_lock = asyncio.Lock()
+_TOP_CACHE_TTL = 300  # 5 minutes
+
+# ============================================================
+# #24: Joke-by-ID index (built once)
+# ============================================================
+_joke_by_id: dict = {}
+_joke_by_id_built = False
+
+def _build_joke_by_id():
+    global _joke_by_id, _joke_by_id_built
+    if _joke_by_id_built:
+        return
+    all_jokes = get_all_jokes()
+    _joke_by_id = {j["id"]: j for j in all_jokes}
+    _joke_by_id_built = True
+
+# ============================================================
+# Lifespan context manager (#39: replaces deprecated on_event)
+# ============================================================
+@asynccontextmanager
+async def lifespan(app):
+    # Startup
+    import asyncio as _asyncio
+    async def _flush_loop():
+        global _pending_rating_save, _last_save_time
+        while True:
+            await _asyncio.sleep(60)
+            async with _rating_lock:
+                if _pending_rating_save and _jokes_cache is not None:
+                    try:
+                        save_json(JOKES_FILE, _jokes_cache)
+                        _pending_rating_save = False
+                        _last_save_time = time.time()
+                        print("💾 Periodic rating flush OK")
+                    except Exception as e:
+                        print(f"⚠️ Rating flush error: {e}")
+    _asyncio.create_task(_flush_loop())
+    yield
+    # Shutdown (#15: save TF-IDF + close SQLite + save ratings)
+    global _pending_rating_save, _jokes_cache, search_engine
+    async with _rating_lock:
+        if _pending_rating_save and _jokes_cache is not None:
+            save_json(JOKES_FILE, _jokes_cache)
+            print("💾 Ratings saved to disk on shutdown")
+    # Save TF-IDF search engine state if loaded
+    if search_engine is not None:
+        print("🔍 Search engine released on shutdown")
+        search_engine = None
+    print("👋 Graceful shutdown complete")
+
+app = FastAPI(title="Анекдот в тему", version="3.10.0", lifespan=lifespan)
 
 # Allow CORS for local development (emulator from file://)
 app.add_middleware(
@@ -77,32 +162,6 @@ def _schedule_rating_save():
     """Mark that ratings need to be saved. Actual save happens on next load or shutdown."""
     global _pending_rating_save, _last_save_time
     _pending_rating_save = True
-
-@app.on_event("shutdown")
-async def _save_on_shutdown():
-    """Save pending ratings when server shuts down."""
-    global _pending_rating_save, _jokes_cache
-    if _pending_rating_save and _jokes_cache is not None:
-        save_json(JOKES_FILE, _jokes_cache)
-        print("💾 Ratings saved to disk on shutdown")
-
-@app.on_event("startup")
-async def _start_periodic_flush():
-    """Background task: flush ratings to disk every 60 seconds."""
-    import asyncio
-    async def _flush_loop():
-        global _pending_rating_save, _last_save_time
-        while True:
-            await asyncio.sleep(60)
-            if _pending_rating_save and _jokes_cache is not None:
-                try:
-                    save_json(JOKES_FILE, _jokes_cache)
-                    _pending_rating_save = False
-                    _last_save_time = time.time()
-                    print("💾 Periodic rating flush OK")
-                except Exception as e:
-                    print(f"⚠️ Rating flush error: {e}")
-    asyncio.create_task(_flush_loop())
 
 def load_json(path, default):
     if path.exists():
@@ -162,7 +221,6 @@ class SemanticSearchEngine:
         )
         self.jokes = []
         self.tfidf_matrix = None
-        self._dirty = False
         self._build_index()
 
     def _build_index(self):
@@ -180,10 +238,6 @@ class SemanticSearchEngine:
         self.tfidf_matrix = self.vectorizer.fit_transform(documents)
 
     def search(self, query: str, top_k: int = 10, min_score: float = 0.05) -> List[dict]:
-        # Lazy rebuild if index is stale
-        if self._dirty:
-            self._build_index()
-            self._dirty = False
         if self.tfidf_matrix is None or not self.jokes:
             return []
         query_vec = self.vectorizer.transform([query])
@@ -211,13 +265,17 @@ class SemanticSearchEngine:
 # Lazy search engine — don't build TF-IDF index until first search request
 # This lets the server start INSTANTLY instead of waiting 60-90 seconds
 search_engine = None
+_search_engine_lock = threading.Lock()
 
 def _get_search_engine():
     global search_engine
     if search_engine is None:
-        print("🔍 Building semantic index (first request)...")
-        search_engine = SemanticSearchEngine()
-        print(f"✅ Indexed {len(search_engine.jokes)} jokes, vocab size: {search_engine.get_stats()['vocabulary_size']}")
+        with _search_engine_lock:
+            # Double-check after acquiring lock
+            if search_engine is None:
+                print("🔍 Building semantic index (first request)...")
+                search_engine = SemanticSearchEngine()
+                print(f"✅ Indexed {len(search_engine.jokes)} jokes, vocab size: {search_engine.get_stats()['vocabulary_size']}")
     return search_engine
 
 # ============================================================
@@ -393,15 +451,22 @@ class JokeRequest(BaseModel):
     text: str
     count: int = 3
     category: Optional[str] = None
-    
-    def validate_text(self):
-        if not self.text or not self.text.strip():
-            raise HTTPException(status_code=400, detail="text не может быть пустым")
-        if len(self.text) > 5000:
-            raise HTTPException(status_code=400, detail="text слишком длинный (макс 5000 символов)")
-        if self.count < 0:
-            raise HTTPException(status_code=400, detail="count не может быть отрицательным")
-        return self.text.strip()
+
+    @field_validator('text')
+    @classmethod
+    def validate_text(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("text не может быть пустым")
+        if len(v) > 5000:
+            raise ValueError("text слишком длинный (макс 5000 символов)")
+        return v.strip()
+
+    @field_validator('count')
+    @classmethod
+    def validate_count(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("count не может быть отрицательным")
+        return v
 
 class FavoriteRequest(BaseModel):
     joke_id: int
@@ -419,6 +484,16 @@ class RatingRequest(BaseModel):
 # ============================================================
 # Routes
 # ============================================================
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """#14: Simple rate limiter — 60 req/min per IP."""
+    if request.url.path.startswith("/api/"):
+        client_ip = request.client.host if request.client else "unknown"
+        if not await _rate_limiter.is_allowed(client_ip):
+            return HTMLResponse(content='{"detail":"Rate limit exceeded (60 req/min)"}', status_code=429, media_type="application/json")
+    response = await call_next(request)
+    return response
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     html_path = BASE_DIR / "static" / "index.html"
@@ -443,6 +518,7 @@ async def get_categories():
 async def get_jokes(
     category: Optional[str] = Query(None),
     count: int = Query(5, ge=1, le=20),
+    offset: int = Query(0, ge=0),
     randomize: bool = Query(True)
 ):
     all_jokes = get_all_jokes()
@@ -454,7 +530,7 @@ async def get_jokes(
     if randomize:
         jokes = random.sample(jokes, min(count, len(jokes)))
     else:
-        jokes = jokes[:count]
+        jokes = jokes[offset:offset + count]
     
     return {"jokes": jokes, "total": len(jokes)}
 
@@ -467,7 +543,6 @@ async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10,
 @app.post("/api/jokes/context")
 async def contextual_joke(request: JokeRequest):
     """Get contextually relevant jokes using semantic search + keyword boosting."""
-    request.validate_text()
     # Step 1: Semantic search
     semantic_results = _get_search_engine().search(request.text, top_k=30)
     
@@ -522,7 +597,6 @@ async def contextual_joke(request: JokeRequest):
 @app.post("/api/jokes/generate")
 async def generate_joke(request: JokeRequest):
     """Generate a new joke using LLM (OpenAI) or template fallback."""
-    request.validate_text()
     matching_cats = find_matching_categories(request.text)
     
     # Try LLM first
@@ -566,48 +640,54 @@ async def generate_joke(request: JokeRequest):
 
 @app.post("/api/favorites")
 async def add_favorite(request: FavoriteRequest):
-    all_favs = load_json(FAVORITES_FILE, {})
-    user_favs = all_favs.get(request.user_id, [])
-    if request.joke_id not in user_favs:
-        user_favs.append(request.joke_id)
-    all_favs[request.user_id] = user_favs
-    save_json(FAVORITES_FILE, all_favs)
+    async with _favorites_lock:
+        all_favs = load_json(FAVORITES_FILE, {})
+        user_favs = all_favs.get(request.user_id, [])
+        if request.joke_id not in user_favs:
+            user_favs.append(request.joke_id)
+        all_favs[request.user_id] = user_favs
+        save_json(FAVORITES_FILE, all_favs)
     return {"favorites": user_favs}
 
 @app.delete("/api/favorites/{joke_id}")
 async def remove_favorite(joke_id: int, user_id: str = "default"):
-    all_favs = load_json(FAVORITES_FILE, {})
-    user_favs = all_favs.get(user_id, [])
-    if joke_id in user_favs:
-        user_favs.remove(joke_id)
-    all_favs[user_id] = user_favs
-    save_json(FAVORITES_FILE, all_favs)
+    async with _favorites_lock:
+        all_favs = load_json(FAVORITES_FILE, {})
+        user_favs = all_favs.get(user_id, [])
+        if joke_id in user_favs:
+            user_favs.remove(joke_id)
+        all_favs[user_id] = user_favs
+        save_json(FAVORITES_FILE, all_favs)
     return {"favorites": user_favs}
 
 @app.get("/api/favorites")
 async def get_favorites(user_id: str = "default"):
     all_favs = load_json(FAVORITES_FILE, {})
     favorites = all_favs.get(user_id, [])
-    all_jokes = get_all_jokes()
-    fav_jokes = [j for j in all_jokes if j["id"] in favorites]
+    if not favorites:
+        return {"jokes": []}
+    fav_set = set(favorites)
+    _build_joke_by_id()
+    fav_jokes = [_joke_by_id[jid].copy() for jid in favorites if jid in _joke_by_id]
     return {"jokes": fav_jokes}
 
 @app.post("/api/rate")
 async def rate_joke(request: RatingRequest):
     clamped = request.validate_rating()
-    db = load_jokes()  # Uses cache, fast after first call
-    for category, jokes in db.items():
-        for joke in jokes:
-            if joke["id"] == request.joke_id:
-                old = joke.get("rating", 4.0)
-                # Weighted average with increasing confidence
-                votes = joke.get("votes", 1) + 1
-                new = round((old * (votes - 1) + clamped) / votes, 1)
-                joke["rating"] = min(max(new, 1.0), 5.0)
-                joke["votes"] = votes
-                # Schedule save — don't block response
-                _schedule_rating_save()
-                return {"new_rating": joke["rating"], "votes": votes}
+    async with _rating_lock:
+        db = load_jokes()  # Uses cache, fast after first call
+        for category, jokes in db.items():
+            for joke in jokes:
+                if joke["id"] == request.joke_id:
+                    old = joke.get("rating", 4.0)
+                    # Weighted average with increasing confidence
+                    votes = joke.get("votes", 1) + 1
+                    new = round((old * (votes - 1) + clamped) / votes, 1)
+                    joke["rating"] = min(max(new, 1.0), 5.0)
+                    joke["votes"] = votes
+                    # Schedule save — don't block response
+                    _schedule_rating_save()
+                    return {"new_rating": joke["rating"], "votes": votes}
     raise HTTPException(status_code=404, detail="Joke not found")
 
 @app.get("/api/joke/random")
@@ -770,6 +850,10 @@ async def list_user_jokes(approved: int = Query(0)):
 async def delete_user_joke(joke_id: int):
     conn = get_db()
     try:
+        # Check that joke exists (#30: 404 if not found)
+        row = conn.execute("SELECT id FROM user_jokes WHERE id = ?", (joke_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Joke not found")
         conn.execute("DELETE FROM user_jokes WHERE id = ?", (joke_id,))
         conn.commit()
     finally:
@@ -837,9 +921,9 @@ async def like_joke(joke_id: int):
         if row:
             conn.execute("UPDATE jokes SET likes = likes + 1 WHERE id = ?", (joke_id,))
         else:
-            # Insert from JSON db
-            all_jokes = get_all_jokes()
-            joke = next((j for j in all_jokes if j["id"] == joke_id), None)
+            # Insert from JSON db — use _joke_by_id index (#24: O(1) instead of O(N))
+            _build_joke_by_id()
+            joke = _joke_by_id.get(joke_id)
             if joke:
                 conn.execute("INSERT INTO jokes (id, category, text, rating, tags, likes) VALUES (?,?,?,?,?,1)",
                             (joke["id"], joke["category"], joke["text"], joke.get("rating", 4.0), json.dumps(joke.get("tags",[]))))
@@ -855,11 +939,15 @@ async def like_joke(joke_id: int):
 
 @app.get("/api/jokes/social/top")
 async def top_jokes(period: str = Query("day"), count: int = Query(10, ge=1, le=50)):
-    """Get top jokes by likes/rating."""
-    all_jokes = get_all_jokes()
-    # Sort by rating (likes would come from DB in production)
-    sorted_jokes = sorted(all_jokes, key=lambda j: j.get("rating", 0), reverse=True)
-    return {"jokes": sorted_jokes[:count], "period": period}
+    """Get top jokes by likes/rating. Results cached for 5 minutes (#23)."""
+    global _top_cache
+    async with _top_cache_lock:
+        now = time.time()
+        if now - _top_cache["timestamp"] > _TOP_CACHE_TTL or not _top_cache["jokes"]:
+            all_jokes = get_all_jokes()
+            sorted_jokes = sorted(all_jokes, key=lambda j: j.get("rating", 0), reverse=True)
+            _top_cache = {"jokes": sorted_jokes[:100], "timestamp": now}
+    return {"jokes": _top_cache["jokes"][:count], "period": period}
 
 # ============================================================
 # #31: Monetization endpoints (stubs)
@@ -1375,7 +1463,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.9.0"
+        "version": "3.10.0"
     }
 
 # ============================================================
@@ -1450,5 +1538,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"Запуск Анекдот в тему v3.9.0 на http://localhost:{port}")
+    print(f"Запуск Анекдот в тему v3.10.0 на http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

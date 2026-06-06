@@ -486,6 +486,7 @@ const CAT_NAMES = {
 };
 
 let favorites = [];
+let _favoriteJokes = []; // #29: Cache favorite jokes to avoid double fetch
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
@@ -660,20 +661,19 @@ async function loadFavorites() {
     const data = await api('/api/favorites');
     if (data && data.jokes) {
         favorites = data.jokes.map(j => j.id);
+        _favoriteJokes = data.jokes;
     }
     renderFavorites();
 }
 
 function renderFavorites() {
     const list = document.getElementById('favoritesList');
-    // We need to fetch again
-    fetch(API + '/api/favorites').then(r => r.json()).then(data => {
-        if (data && data.jokes && data.jokes.length) {
-            list.innerHTML = data.jokes.map(j => renderJokeCard(j)).join('');
-        } else {
-            list.innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
-        }
-    });
+    // #29: Use cached data from loadFavorites instead of double fetch
+    if (_favoriteJokes && _favoriteJokes.length) {
+        list.innerHTML = _favoriteJokes.map(j => renderJokeCard(j)).join('');
+    } else {
+        list.innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
+    }
 }
 
 function renderJokeCard(joke, collapsed = false) {
@@ -696,10 +696,10 @@ function renderJokeCard(joke, collapsed = false) {
                 <button class="joke-action-btn ${isFav ? 'fav-active' : ''}" onclick="toggleFavorite(${joke.id}, this)">
                     ${isFav ? '❤️' : '🤍'} ${isFav ? 'В избранном' : 'В избранное'}
                 </button>
-                <button class="joke-action-btn" onclick="copyJoke(this)" data-text="${joke.text.replace(/"/g, '&quot;')}">
+                <button class="joke-action-btn copy-btn">
                     📋 Копировать
                 </button>
-                <button class="joke-action-btn" onclick="speakJoke(this)" data-text="${joke.text.replace(/"/g, '&quot;')}">
+                <button class="joke-action-btn speak-btn">
                     🔊 Озвучить
                 </button>
             </div>
@@ -713,6 +713,7 @@ async function toggleFavorite(id, btn) {
     if (isFav) {
         await api(`/api/favorites/${id}`, {method: 'DELETE'});
         favorites = favorites.filter(f => f !== id);
+        _favoriteJokes = _favoriteJokes.filter(j => j.id !== id);
         btn.classList.remove('fav-active');
         btn.innerHTML = '🤍 В избранное';
     } else {
@@ -729,16 +730,28 @@ async function toggleFavorite(id, btn) {
     loadStats();
 }
 
-function copyJoke(btn) {
-    const text = btn.dataset.text;
-    navigator.clipboard.writeText(text).then(() => showToast('Анекдот скопирован! 📋'));
-}
+// #47: Use event delegation for copy/speak buttons with safe dataset API
+document.addEventListener('click', function(e) {
+    const copyBtn = e.target.closest('.copy-btn');
+    if (copyBtn) {
+        const card = copyBtn.closest('.joke-card');
+        const text = card ? card.querySelector('.joke-text').textContent : '';
+        navigator.clipboard.writeText(text).then(() => showToast('Анекдот скопирован! 📋'));
+        return;
+    }
+    const speakBtn = e.target.closest('.speak-btn');
+    if (speakBtn) {
+        speakJoke(speakBtn);
+    }
+});
 
 // Global audio player
 let currentAudio = null;
 
 async function speakJoke(btn) {
-    const text = btn.dataset.text;
+    // #47: Get text safely from the joke-text element, not from data attribute
+    const card = btn.closest('.joke-card');
+    const text = card ? card.querySelector('.joke-text').textContent : '';
     if (!text) return;
 
     // Stop if already playing
