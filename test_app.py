@@ -216,7 +216,7 @@ test("Rate validation (404 for missing joke)", t22)
 def t23():
     r = client.post("/api/jokes/1/like")
     assert r.status_code == 200
-    assert r.json()["liked"] == True
+    assert r.json()["status"] == "liked"
 test("Like joke", t23)
 
 # Test 24: Ad stub

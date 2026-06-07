@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Автоматическая система модерации для «Анекдот в Тему».
-Классы: ProfanityFilter, SpamDetector, ContentModerator.
+Automatic moderation system for "Anekdot v Temu" (Joke on Topic).
+Classes: ProfanityFilter, SpamDetector, ContentModerator.
 """
 import re
 import math
 from collections import Counter
 
 # ---------------------------------------------------------------------------
-# Стемы русского мата (~200 основ + производные)
-# Храним как frozenset для быстрого lookup
+# Russian profanity stems (~200 roots + derivatives)
+# Stored as frozenset for fast lookup
 # ---------------------------------------------------------------------------
 _PROFANITY_STEMS: frozenset = frozenset({
-    # хуй (х*y)
+    # dick root and derivatives
     "хуй", "хуя", "хуе", "хуи", "хуё",
     "хуев", "хуён", "хуяр", "хулю", "хую",
     "хуяк", "хуяра", "хуярить", "хуякать",
@@ -29,7 +29,7 @@ _PROFANITY_STEMS: frozenset = frozenset({
     "хуиплёт", "хуеглот",
     "хуюшки", "хуй",
 
-    # пизда (п*зд)
+    # cunt root and derivatives
     "пизда", "пизду", "пизды", "пиздой", "пизде",
     "пиздёж", "пиздёжик",
     "пиздеть", "пиздит", "пиздят", "пиздел", "пиздит",
@@ -44,13 +44,13 @@ _PROFANITY_STEMS: frozenset = frozenset({
     "опездол", "опизденеть",
     "препиздонь", "подпизднуть",
 
-    # блядь / бля (б*я)
+    # whore / damn root and derivatives
     "блядь", "бля", "бляди", "блядство", "блядский",
     "блядина", "блядовать", "блядун",
     "блядский", "блядски",
-    "заблудшая",  # не мат, но иногда контекстно
+    "заблудшая",  # not profanity, but sometimes contextual
 
-    # ебать (*бать)
+    # fuck root and derivatives
     "ебать", "ебал", "ебала", "ебало", "ебали",
     "ебан", "ебана", "ебаный", "ебаное", "ебаная", "ебаные",
     "ебанутый", "ебанутая", "ебанутых",
@@ -68,49 +68,49 @@ _PROFANITY_STEMS: frozenset = frozenset({
     "подъебнуть", "подъебывать",
     "ъебать",
 
-    # елда / елдак
+    # prick
     "елда", "елдак", "елдовый",
 
-    # бля (доп)
+    # damn (additional)
     "бляха", "бляха-муха",
 
-    # говно (г*вн)
+    # shit root and derivatives
     "говно", "говна", "говне", "говну", "говном",
     "говнистый", "говённый",
     "говняк", "говняной", "говнюк", "говнюкать",
 
-    # залупа (з*луп)
+    # foreskin root and derivatives
     "залупа", "залупу", "залупы", "залупой",
     "залупить", "залупился",
 
-    # пидор / пидарас (п*дор)
+    # faggot / fag root and derivatives
     "пидор", "пидора", "пидоры", "пидором",
     "пидорас", "пидорасы", "пидорка",
     "пидорить", "пидорнуть",
     "педик", "педика", "педики",
     "педераст", "педерастия",
 
-    # дрочить / дрочка (д*ч)
+    # jerk off root and derivatives
     "дрочить", "дрочу", "дрочит", "дрочат",
     "дрочка", "дрочёный",
     "задрот", "задрота", "задроты",
     "онанизм", "онанист",
     "мудоеб", "мудак", "мудаки", "мудачьё",
 
-    # хер
+    # prick (alt)
     "хер", "хера", "херу", "хером", "херы",
     "похер", "похеру", "похерить", "похеру",
     "охерел", "охеренно",
     "нахер", "нахера",
 
-    # мудила
+    # dumbass
     "мудила", "мудилы", "мудилой",
 
-    # жопа
+    # ass
     "жопа", "жопу", "жопы", "жопой", "жопе",
     "жопник", "жопошник",
 
-    # срать / засранец
+    # shit / shitter
     "срать", "сру", "срет", "срут",
     "насрать", "насрал",
     "засрать", "засрал",
@@ -118,52 +118,52 @@ _PROFANITY_STEMS: frozenset = frozenset({
     "дристать", "дрищу",
     "гавно",
 
-    # член / хуем — убрано: «член комиссии» = FP, контекстно-зависимое
+    # "member" stem removed: "committee member" = false positive, context-dependent
 
-    # курва
+    # whore (Polish loanword)
     "курва",
 
-    # шлюха
+    # slut
     "шлюха", "шлюхи", "шлюхой", "шлюх",
     "шалава", "шалавой",
 
-    # тварь
+    # creature / bitch
     "тварь", "твари", "тварью",
 
-    # сучка / сука
+    # bitch
     "сука", "суки", "сукой", "сук",
 
-    # блевать
+    # vomit
     "блевать", "блевануть",
 
-    # трахать
+    # fuck / bang
     "трахать", "трахаю", "трахает",
     "трахаться", "трахнулся",
     "оттрахать", "оттрахал",
 
-    # пердеть
+    # fart
     "пердеть", "пердёж", "перднул",
 
-    # манда
+    # cunt (alt)
     "манда", "манду", "мандой",
 
-    # путана
+    # prostitute
     "путана",
 
-    # дерьмо
+    # crap
     "дерьмо", "дерьма", "дерьмом",
 
-    # ссать
+    # piss
     "ссать", "ссу", "ссет", "ссут",
     "нассать", "нассал",
 
-    # бздеть
+    # stink / fart (alt)
     "бздеть", "бздец",
 
-    # перины / прочие
+    # duplicates / misc
     "хуйня", "пиздюк",
 
-    # ------- Доп. дериваты (добиваем до ~200) -------
+    # ------- Additional derivatives (bringing total to ~200) -------
     "хуйовина", "хуинь", "хуиню", "хуиня",
     "охуели", "охуеть", "ахуел", "ахуела",
     "вхуякнуть", "вхуяривать",
@@ -211,42 +211,42 @@ _PROFANITY_STEMS: frozenset = frozenset({
     "ебаный", "ёбаный",
     "уебан", "уёбан",
 
-    # гандон / гондон
+    # condom
     "гандон", "гандона", "гандоны", "гандоном",
     "гондон", "гондона", "гондоны",
 })
 
 
 class ProfanityFilter:
-    """Фильтр нецензурной лексики для русских текстов."""
+    """Profanity filter for Russian texts."""
 
     def __init__(self):
         self._stems = _PROFANITY_STEMS
-        # Прекомпилируем регулярку для скорости
+        # Pre-compile regex for speed
         self._word_re = re.compile(r'[а-яёА-ЯЁa-zA-Z]+', re.UNICODE)
 
-    # ----- внутренний: нормализация слова -----
+    # ----- internal: word normalization -----
     @staticmethod
     def _normalize(word: str) -> str:
-        """Приводим к нижнему регистру и заменяем йоты."""
+        """Convert to lowercase and replace iotated letters."""
         return word.lower().replace('ё', 'е').replace('й', 'и').replace('ъ', '').replace('ь', '')
 
-    # ----- публичные методы -----
+    # ----- public methods -----
     def _find_bad_words(self, text: str) -> list:
-        """Возвращает список найденных нецензурных слов."""
+        """Returns a list of found profane words."""
         found = []
         for match in self._word_re.finditer(text):
             word = match.group()
             norm = self._normalize(word)
-            # Прямое совпадение
+            # Direct match
             if norm in self._stems:
                 found.append(word)
                 continue
-            # Проверяем: является ли norm началом или серединой любого стема
-            # (ловит производные типа «пизданул», «охуевший» и т.д.)
+            # Check if norm is a prefix or infix of any stem
+            # (catches derivatives via fuzzy matching)
             for stem in self._stems:
                 if len(norm) >= 3 and (norm.startswith(stem[:3]) or stem.startswith(norm[:3])):
-                    # Более точная проверка: если пересечение по символам >= 60%
+                    # More precise check: if character overlap >= 60%
                     common = 0
                     min_len = min(len(norm), len(stem))
                     for i in range(min_len):
@@ -259,14 +259,14 @@ class ProfanityFilter:
 
     def check(self, text: str) -> dict:
         """
-        Проверить текст на мат.
+        Check text for profanity.
 
         Returns:
             {
-                'passed': bool,       # True если passed
-                'score': float,       # 0-1 (0 = чисто, 1 = максимум мата)
-                'flags': [str],       # Список найденных слов
-                'clean_text': str,    # Текст с заменой ***
+                'passed': bool,       # True if passed
+                'score': float,       # 0-1 (0 = clean, 1 = maximum profanity)
+                'flags': [str],       # List of found words
+                'clean_text': str,    # Text with *** replacements
             }
         """
         bad_words = self._find_bad_words(text)
@@ -284,7 +284,7 @@ class ProfanityFilter:
         }
 
     def filter_text(self, text: str) -> str:
-        """Заменяет нецензурные слова на ***."""
+        """Replaces profane words with ***."""
         def _replacer(match):
             word = match.group()
             norm = self._normalize(word)
@@ -306,7 +306,7 @@ class ProfanityFilter:
 
 
 class SpamDetector:
-    """Детектор спама и дублей."""
+    """Spam and duplicate detector."""
 
     def __init__(self):
         self._history: list = []
@@ -317,13 +317,13 @@ class SpamDetector:
 
     @staticmethod
     def _tokenize(text: str) -> Counter:
-        """Простая токенизация: слова в нижнем регистре."""
+        """Simple tokenization: words in lowercase."""
         words = re.findall(r'[а-яёa-z0-9]+', text.lower())
         return Counter(words)
 
     @staticmethod
     def _cosine_similarity(v1: Counter, v2: Counter) -> float:
-        """Косинусное сходство двух Counter-векторов."""
+        """Cosine similarity of two Counter vectors."""
         common = set(v1) & set(v2)
         if not common:
             return 0.0
@@ -336,16 +336,16 @@ class SpamDetector:
 
     def is_spam(self, text: str) -> bool:
         """
-        Определяет, является ли текст спамом.
+        Determines whether the text is spam.
 
-        Критерии:
-          - cosine similarity > 0.9 с предыдущими текстами (дубликаты)
-          - длина < 15 символов
+        Criteria:
+          - cosine similarity > 0.9 with previous texts (duplicates)
+          - length < 15 characters
           - >80% CAPS
-          - >5 повторений одного слова
-          - содержит URL
+          - >5 repetitions of a single word
+          - contains URL
         """
-        # 1. Длина
+        # 1. Length
         if len(text.strip()) < 15:
             return True
 
@@ -356,7 +356,7 @@ class SpamDetector:
             if caps_count / len(alpha_chars) > 0.8:
                 return True
 
-        # 3. Повторы слов > 5 раз
+        # 3. Word repetitions > 5 times
         words = re.findall(r'[а-яёa-z]+', text.lower())
         if words:
             word_counts = Counter(words)
@@ -367,14 +367,14 @@ class SpamDetector:
         if self._url_re.search(text):
             return True
 
-        # 5. Дубликаты (cosine > 0.9)
+        # 5. Duplicates (cosine > 0.9)
         current_vec = self._tokenize(text)
-        for prev_text in self._history[-50:]:  # Проверяем последние 50
+        for prev_text in self._history[-50:]:  # Check the last 50
             prev_vec = self._tokenize(prev_text)
             if self._cosine_similarity(current_vec, prev_vec) > 0.9:
                 return True
 
-        # Сохраняем в историю (максимум 200 записей)
+        # Save to history (max 200 entries)
         self._history.append(text)
         if len(self._history) > 200:
             self._history = self._history[-200:]
@@ -383,9 +383,9 @@ class SpamDetector:
 
 class ContentModerator:
     """
-    Главный модератор контента.
+    Main content moderator.
 
-    Пороги severity score:
+    Severity score thresholds:
       < 0.3  → approved
       0.3-0.7 → needs_review
       > 0.7  → rejected
@@ -397,14 +397,14 @@ class ContentModerator:
 
     def moderate(self, text: str) -> dict:
         """
-        Модерация текста.
+        Moderate text.
 
         Returns:
             {
                 'approved': bool,
-                'score': float,          # 0-1, общий скор нарушения
-                'reasons': [str],        # причины
-                'clean_text': str,       # текст с заменой мата
+                'score': float,          # 0-1, overall violation score
+                'reasons': [str],        # reasons
+                'clean_text': str,       # text with profanity replaced
             }
         """
         reasons = []
@@ -414,26 +414,26 @@ class ContentModerator:
         p_result = self.profanity.check(text)
         if not p_result['passed']:
             reasons.append(f"profanity: {', '.join(p_result['flags'][:5])}")
-            # Базовый штраф 0.35 + пропорциональный (до 0.35) → максимум 0.7
+            # Base penalty 0.35 + proportional (up to 0.35) → max 0.7
             total_score += 0.35 + p_result['score'] * 0.35
 
         # 2. Spam check
         if self.spam.is_spam(text):
             reasons.append("spam_detected")
-            total_score += 0.4  # Вес спама — 0.4
+            total_score += 0.4  # Spam weight — 0.4
 
-        # Если пустой текст
+        # If empty text
         if len(text.strip()) == 0:
             reasons.append("empty_text")
             total_score = 1.0
 
         total_score = min(total_score, 1.0)
 
-        # Определяем approved/needs_review/rejected
+        # Determine approved/needs_review/rejected
         if total_score > 0.7:
             approved = False
         elif total_score >= 0.3:
-            approved = False  # needs_review → не approved автоматически
+            approved = False  # needs_review → not auto-approved
         else:
             approved = True
 

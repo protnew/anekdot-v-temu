@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Telegram Bot — Анекдот в тему
 
-Команды:
-    /start — приветствие
-    /random — случайный анекдот
-    /categories — список категорий
-    /top — топ анекдотов
-    /cat <название> — анекдоты из категории
-    /stats — статистика базы
+Commands:
+    /start — greeting
+    /random — random joke
+    /categories — list of categories
+    /top — top jokes
+    /cat <name> — jokes from a category
+    /stats — database statistics
 
 Inline mode:
-    @bot <тема> — подборка шуток прямо в любом чате
+    @bot <topic> — selection of jokes right in any chat
 
-Запуск:
-    export TELEGRAM_BOT_TOKEN="токен_от_BotFather"
+Launch:
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     export API_BASE="http://localhost:8000"
     python bot/telegram_bot.py
 """
@@ -46,7 +46,7 @@ if not TOKEN:
 
 bot = telebot.TeleBot(TOKEN)
 
-# Категории эмодзи
+# Category emojis
 CAT_EMOJIS = {
     'работа': '💼', 'айти': '💻', 'деньги': '💰', 'семья': '👨‍👩‍👧',
     'политика': '🏛️', 'здоровье': '🏥', 'путешествия': '✈️', 'еда': '🍽️',
@@ -175,12 +175,12 @@ def cmd_category(msg):
 
 @bot.inline_handler(lambda q: True)
 def inline_query(query):
-    """Inline mode — работает в любом чате."""
+    """Inline mode — works in any chat."""
     text = query.query.strip()
     results = []
 
     if not text:
-        # Без запроса — случайные шутки
+        # No query — random jokes
         data = api("/api/joke/random")
         if data:
             results.append(types.InlineQueryResultArticle(
@@ -192,7 +192,7 @@ def inline_query(query):
                 )
             ))
     else:
-        # С запросом — контекстный поиск
+        # With query — contextual search
         data = api("/api/jokes/context", method="POST", json_data={"text": text, "count": 5})
         if data and data.get("jokes"):
             for i, joke in enumerate(data["jokes"][:5]):
@@ -229,7 +229,7 @@ def inline_query(query):
 
 @bot.message_handler(content_types=["text"])
 def on_text(msg):
-    """Любой текст → контекстный поиск шутки."""
+    """Any text → contextual joke search."""
     text = msg.text
     if text.startswith("/"):
         return

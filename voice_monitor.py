@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Voice Monitor v2 — с поддержкой Whisper (оффлайн) и Google Speech API (fallback)
+Voice Monitor v2 — with Whisper (offline) and Google Speech API (fallback) support
 
-Слушает микрофон, распознаёт русскую речь, накапливает контекст разговора
-и периодически отправляет его на бэкенд для подбора контекстных шуток.
+Listens to the microphone, recognizes Russian speech, accumulates conversation context
+and periodically sends it to the backend for matching contextual jokes.
 
-STT движки (автовыбор):
-  1. faster-whisper (ОФФЛАЙН, модель base/small) — если установлен
-  2. Google Speech API (онлайн, бесплатный) — fallback
+STT engines (auto-selection):
+  1. faster-whisper (OFFLINE, base/small model) — if installed
+  2. Google Speech API (online, free) — fallback
 
-Запуск:
+Usage:
     python voice_monitor.py
 
-Зависимости:
+Dependencies:
     pip install SpeechRecognition pyaudio requests faster-whisper
 """
 
@@ -29,7 +29,7 @@ from collections import deque
 import requests
 
 # ============================================================
-# Автовыбор STT движка
+# Auto-select STT engine
 # ============================================================
 
 STT_ENGINE = "google"  # default fallback
@@ -38,51 +38,51 @@ try:
     from faster_whisper import WhisperModel
     STT_ENGINE = "whisper"
     logger_tmp = logging.getLogger("whisper_check")
-    logger_tmp.info("faster-whisper найден — используем оффлайн STT")
+    logger_tmp.info("faster-whisper found — using offline STT")
 except ImportError:
     pass
 
 import speech_recognition as sr
 
 # ============================================================
-# Настройки (конфигурация)
+# Settings (configuration)
 # ============================================================
 
-# URL бэкенда «Анекдот в тему»
+# Backend URL for "Anekdot v temu"
 API_URL = os.environ.get("BASE_URL", "http://localhost:8000") + "/api/jokes/context"
 
-# Длительность одного «чанка» записи с микрофона (секунды)
+# Duration of a single microphone recording chunk (seconds)
 CHUNK_DURATION_SECONDS = 7
 
-# Пауза между отправками контекста на сервер (секунды)
+# Pause between sending context to the server (seconds)
 SEND_INTERVAL_SECONDS = 20
 
-# Скользящее окно контекста
+# Sliding context window
 CONTEXT_WINDOW_SECONDS = 45
 
-# Количество шуток, запрашиваемых у бэкенда
+# Number of jokes to request from the backend
 JOKES_COUNT = 3
 
-# Минимальное количество слов для отправки
+# Minimum number of words to send
 MIN_WORDS_TO_SEND = 3
 
-# Таймаут запроса к API (секунды)
+# API request timeout (seconds)
 API_TIMEOUT_SECONDS = 10
 
-# Максимальное количество тихих чанков подряд
+# Maximum number of consecutive silent chunks
 MAX_SILENCE_CHUNKS_WARNING = 10
 
-# Whisper модель (tiny/base/small/medium/large)
+# Whisper model (tiny/base/small/medium/large)
 WHISPER_MODEL_SIZE = os.environ.get("WHISPER_MODEL", "base")
 
 # Whisper: device (cpu/cuda)
 WHISPER_DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 
-# Whisper: compute_type (int8 для CPU, float16 для GPU)
+# Whisper: compute_type (int8 for CPU, float16 for GPU)
 WHISPER_COMPUTE = "int8" if WHISPER_DEVICE == "cpu" else "float16"
 
 # ============================================================
-# Настройка логирования
+# Logging configuration
 # ============================================================
 
 logging.basicConfig(
@@ -97,65 +97,65 @@ logger = logging.getLogger("voice_monitor")
 
 
 # ============================================================
-# Whisper STT Engine (оффлайн)
+# Whisper STT Engine (offline)
 # ============================================================
 
 class WhisperEngine:
-    """Оффлайн распознавание речи через faster-whisper."""
+    """Offline speech recognition via faster-whisper."""
     
     def __init__(self, model_size: str = WHISPER_MODEL_SIZE):
-        logger.info(f"📦 Загрузка Whisper модели '{model_size}'...")
+        logger.info(f"📦 Loading Whisper model '{model_size}'...")
         self.model = WhisperModel(
             model_size,
             device=WHISPER_DEVICE,
             compute_type=WHISPER_COMPUTE
         )
-        logger.info(f"✅ Whisper '{model_size}' загружен ({WHISPER_DEVICE}/{WHISPER_COMPUTE})")
+        logger.info(f"✅ Whisper '{model_size}' loaded ({WHISPER_DEVICE}/{WHISPER_COMPUTE})")
     
     def transcribe_audio(self, audio_data: sr.AudioData) -> str | None:
         """
-        Распознать речь из AudioData.
-        Возвращает текст или None.
+        Recognize speech from AudioData.
+        Returns text or None.
         """
         try:
-            # Конвертируем AudioData → numpy array (16kHz, mono)
+            # Convert AudioData → numpy array (16kHz, mono)
             import numpy as np
             raw = audio_data.get_raw_data(convert_rate=16000, convert_width=2)
             np_array = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
             
-            # Транскрибация
+            # Transcription
             segments, info = self.model.transcribe(
                 np_array,
                 language="ru",
                 beam_size=3,
-                vad_filter=True,  # Voice Activity Detection — отсекает тишину
+                vad_filter=True,  # Voice Activity Detection — cuts silence
                 vad_parameters=dict(
                     min_silence_duration_ms=500,
                     speech_pad_ms=200
                 )
             )
             
-            # Собираем текст из всех сегментов
+            # Collect text from all segments
             text = " ".join(seg.text.strip() for seg in segments).strip()
             
             if text:
-                logger.debug(f"Whisper: «{text}» (язык={info.language}, prob={info.language_probability:.2f})")
+                logger.debug(f"Whisper: \"{text}\" (language={info.language}, prob={info.language_probability:.2f})")
                 return text
             return None
             
         except Exception as e:
-            logger.warning(f"⚠️ Whisper ошибка: {e}")
+            logger.warning(f"⚠️ Whisper error: {e}")
             return None
 
 
 # ============================================================
-# Скользящее окно контекста
+# Sliding context window
 # ============================================================
 
 class ConversationContext:
     """
-    Скользящее окно контекста разговора.
-    Хранит распознанные фрагменты речи с временными метками.
+    Sliding window of conversation context.
+    Stores recognized speech fragments with timestamps.
     """
 
     def __init__(self, window_seconds: int = CONTEXT_WINDOW_SECONDS):
@@ -166,7 +166,7 @@ class ConversationContext:
         now = time.time()
         self._entries.append((now, text.strip()))
         self._cleanup(now)
-        logger.info(f"🎤 Услышано: «{text.strip()}»")
+        logger.info(f"🎤 Heard: \"{text.strip()}\"")
 
     def get_full_context(self) -> str:
         self._cleanup(time.time())
@@ -194,11 +194,11 @@ class ConversationContext:
 
 
 # ============================================================
-# Отправка контекста на бэкенд
+# Sending context to the backend
 # ============================================================
 
 class JokeFetcher:
-    """Отправляет контекст на бэкенд и получает подходящие шутки."""
+    """Sends context to the backend and receives matching jokes."""
 
     def __init__(self, api_url: str = API_URL, count: int = JOKES_COUNT):
         self.api_url = api_url
@@ -207,14 +207,14 @@ class JokeFetcher:
 
     def fetch_jokes(self, context: str) -> dict | None:
         if context.strip() == self._last_sent_context.strip():
-            logger.debug("Контекст не изменился — пропускаем")
+            logger.debug("Context unchanged — skipping")
             return None
 
         payload = {"text": context.strip(), "count": self.count}
 
         try:
-            logger.info(f"📤 Отправляем контекст ({len(context)} символов)...")
-            logger.info(f"   «{context[:100]}{'...' if len(context) > 100 else ''}»")
+            logger.info(f"📤 Sending context ({len(context)} characters)...")
+            logger.info(f"   \"{context[:100]}{'...' if len(context) > 100 else ''}\"")
 
             response = requests.post(
                 self.api_url,
@@ -228,32 +228,32 @@ class JokeFetcher:
 
             jokes = data.get("jokes", [])
             categories = data.get("matched_categories", [])
-            logger.info(f"📥 Получено {len(jokes)} шуток, категории: {categories}")
+            logger.info(f"📥 Received {len(jokes)} jokes, categories: {categories}")
 
             return data
 
         except requests.exceptions.ConnectionError:
-            logger.warning(f"⚠️  Не удалось подключиться к серверу {self.api_url}")
-            logger.warning("   Убедитесь, что бэкенд запущен: python main.py")
+            logger.warning(f"⚠️  Failed to connect to server {self.api_url}")
+            logger.warning("   Make sure the backend is running: python main.py")
             return None
         except requests.exceptions.Timeout:
-            logger.warning("⚠️  Таймаут при запросе к серверу")
+            logger.warning("⚠️  Timeout when requesting server")
             return None
         except Exception as e:
-            logger.warning(f"⚠️  Ошибка: {e}")
+            logger.warning(f"⚠️  Error: {e}")
             return None
 
 
 # ============================================================
-# Вывод шуток + bridge для overlay
+# Displaying jokes + bridge for overlay
 # ============================================================
 
 def display_jokes(data: dict) -> None:
-    """Красиво вывести шутки + записать в bridge-файл для overlay."""
+    """Pretty-print jokes + write to bridge file for overlay."""
     jokes = data.get("jokes", [])
     categories = data.get("matched_categories", [])
 
-    # Bridge: записываем лучшую шутку для overlay
+    # Bridge: write best joke for overlay
     if jokes:
         try:
             bridge_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "latest_joke.json")
@@ -264,13 +264,13 @@ def display_jokes(data: dict) -> None:
             pass
 
     if not jokes:
-        logger.info("😶 Шуток не найдено для данного контекста")
+        logger.info("😶 No jokes found for this context")
         return
 
     print("\n" + "=" * 70)
-    print(f"😂 АНЕКДОТЫ В ТЕМУ ({datetime.now().strftime('%H:%M:%S')})")
+    print(f"😂 ANEKDOTY V TEMU ({datetime.now().strftime('%H:%M:%S')})")
     if categories:
-        print(f"   Категории: {', '.join(categories)}")
+        print(f"   Categories: {', '.join(categories)}")
     print("=" * 70)
 
     for i, joke in enumerate(jokes, 1):
@@ -279,7 +279,7 @@ def display_jokes(data: dict) -> None:
         score = joke.get("semantic_score", 0)
         rating = joke.get("rating", "—")
 
-        print(f"\n  #{i} [{category}] (релевантность: {score:.2f}, рейтинг: {rating})")
+        print(f"\n  #{i} [{category}] (relevance: {score:.2f}, rating: {rating})")
         words = text.split()
         line = "    "
         for word in words:
@@ -294,15 +294,15 @@ def display_jokes(data: dict) -> None:
 
 
 # ============================================================
-# Основной класс VoiceMonitor
+# Main VoiceMonitor class
 # ============================================================
 
 class VoiceMonitor:
     """
-    Главный класс мониторинга голоса.
+    Main voice monitoring class.
     
-    Слушает микрофон → распознаёт речь (Whisper или Google) → 
-    накапливает контекст → отправляет на бэкенд → получает шутки.
+    Listens to microphone → recognizes speech (Whisper or Google) →
+    accumulates context → sends to backend → receives jokes.
     """
 
     def __init__(self):
@@ -314,18 +314,18 @@ class VoiceMonitor:
         self._silence_counter = 0
         self.whisper_engine = None
 
-        # Параметры распознавателя
+        # Recognizer parameters
         self.recognizer.energy_threshold = 300
         self.recognizer.dynamic_energy_threshold = True
         self.recognizer.pause_threshold = 0.8
 
-        # Инициализируем Whisper если доступен
+        # Initialize Whisper if available
         if STT_ENGINE == "whisper":
             try:
                 self.whisper_engine = WhisperEngine()
             except Exception as e:
-                logger.warning(f"⚠️ Не удалось загрузить Whisper: {e}")
-                logger.warning("   Переключаюсь на Google Speech API")
+                logger.warning(f"⚠️ Failed to load Whisper: {e}")
+                logger.warning("   Switching to Google Speech API")
                 self.whisper_engine = None
 
     @property
@@ -335,39 +335,39 @@ class VoiceMonitor:
         return "Google Speech API"
 
     def _init_microphone(self) -> bool:
-        """Инициализировать микрофон."""
+        """Initialize microphone."""
         try:
             mic_list = sr.Microphone.list_microphone_names()
             if not mic_list:
-                logger.error("❌ Микрофоны не найдены!")
+                logger.error("❌ No microphones found!")
                 return False
 
-            logger.info(f"🔊 Найдено микрофонов: {len(mic_list)}")
+            logger.info(f"🔊 Microphones found: {len(mic_list)}")
             for i, name in enumerate(mic_list):
                 logger.info(f"   [{i}] {name}")
 
             self.microphone = sr.Microphone()
 
-            logger.info("🔧 Калибровка шума (помолчите 2 секунды)...")
+            logger.info("🔧 Calibrating noise (stay silent for 2 seconds)...")
             with self.microphone as source:
                 self.recognizer.adjust_for_ambient_noise(source, duration=2)
-            logger.info(f"✅ Калибровка OK. Порог: {self.recognizer.energy_threshold}")
+            logger.info(f"✅ Calibration OK. Threshold: {self.recognizer.energy_threshold}")
 
             return True
 
         except OSError as e:
-            logger.error(f"❌ Ошибка микрофона: {e}")
-            logger.error("   Решения:")
-            logger.error("   — Проверьте подключение микрофона")
+            logger.error(f"❌ Microphone error: {e}")
+            logger.error("   Solutions:")
+            logger.error("   — Check microphone connection")
             logger.error("   — Linux: sudo apt install portaudio19-dev")
             logger.error("   — pip install pyaudio")
             return False
         except Exception as e:
-            logger.error(f"❌ Ошибка: {e}")
+            logger.error(f"❌ Error: {e}")
             return False
 
     def _listen_chunk(self) -> str | None:
-        """Записать один чанк и распознать речь."""
+        """Record one chunk and recognize speech."""
         try:
             with self.microphone as source:
                 audio = self.recognizer.listen(
@@ -376,31 +376,31 @@ class VoiceMonitor:
                     phrase_time_limit=CHUNK_DURATION_SECONDS
                 )
 
-            # Сначала пробуем Whisper (оффлайн)
+            # First try Whisper (offline)
             if self.whisper_engine:
                 text = self.whisper_engine.transcribe_audio(audio)
                 if text:
                     return text
 
-            # Fallback: Google Speech API (онлайн)
+            # Fallback: Google Speech API (online)
             try:
                 text = self.recognizer.recognize_google(audio, language="ru-RU")
                 return text if text else None
             except sr.UnknownValueError:
                 return None
             except sr.RequestError as e:
-                logger.warning(f"⚠️ Google API ошибка: {e}")
+                logger.warning(f"⚠️ Google API error: {e}")
                 return None
 
         except sr.WaitTimeoutError:
             return None
         except Exception as e:
-            logger.warning(f"⚠️ Ошибка: {e}")
+            logger.warning(f"⚠️ Error: {e}")
             return None
 
     def _send_context_periodically(self) -> None:
-        """Фоновый поток: каждые N секунд отправляет контекст."""
-        logger.info(f"⏰ Отправка каждые {SEND_INTERVAL_SECONDS}с")
+        """Background thread: sends context every N seconds."""
+        logger.info(f"⏰ Sending every {SEND_INTERVAL_SECONDS}s")
 
         while self._running:
             time.sleep(SEND_INTERVAL_SECONDS)
@@ -420,18 +420,18 @@ class VoiceMonitor:
                 display_jokes(result)
 
     def start(self) -> None:
-        """Запустить мониторинг. Блокирующий вызов."""
+        """Start monitoring. Blocking call."""
         print()
         print("╔══════════════════════════════════════════════════════╗")
-        print("║     🎙️  АНЕКДОТ В ТЕМУ — Голосовой монитор v2      ║")
-        print("║     Слушаю разговор и подбираю шутки в тему         ║")
+        print("║     🎙️  ANEKDOT V TEMU — Voice Monitor v2          ║")
+        print("║     Listening to conversation and finding jokes     ║")
         print("╚══════════════════════════════════════════════════════╝")
-        print(f"   STT движок: {self.stt_name}")
-        print(f"   Whisper модель: {WHISPER_MODEL_SIZE}" if self.whisper_engine else "")
+        print(f"   STT engine: {self.stt_name}")
+        print(f"   Whisper model: {WHISPER_MODEL_SIZE}" if self.whisper_engine else "")
         print()
 
         if not self._init_microphone():
-            logger.error("Микрофон недоступен. Завершение.")
+            logger.error("Microphone unavailable. Exiting.")
             return
 
         self._running = True
@@ -442,9 +442,9 @@ class VoiceMonitor:
         )
         sender_thread.start()
 
-        logger.info(f"🎙️ Мониторинг запущен ({self.stt_name})")
-        logger.info(f"   чанк: {CHUNK_DURATION_SECONDS}с, отправка: каждые {SEND_INTERVAL_SECONDS}с")
-        logger.info("   Ctrl+C для остановки\n")
+        logger.info(f"🎙️ Monitoring started ({self.stt_name})")
+        logger.info(f"   chunk: {CHUNK_DURATION_SECONDS}s, sending: every {SEND_INTERVAL_SECONDS}s")
+        logger.info("   Press Ctrl+C to stop\n")
 
         try:
             while self._running:
@@ -456,19 +456,19 @@ class VoiceMonitor:
                 else:
                     self._silence_counter += 1
                     if self._silence_counter == MAX_SILENCE_CHUNKS_WARNING:
-                        logger.info("💤 Длительная тишина...")
+                        logger.info("💤 Prolonged silence...")
                     elif self._silence_counter % 30 == 0:
-                        logger.info("🔇 Нет речи давно. Проверьте микрофон.")
+                        logger.info("🔇 No speech for a long time. Check the microphone.")
 
         except KeyboardInterrupt:
-            logger.info("\n🛑 Остановка...")
+            logger.info("\n🛑 Stopping...")
         finally:
             self._running = False
-            logger.info("✅ Мониторинг остановлен")
+            logger.info("✅ Monitoring stopped")
 
 
 # ============================================================
-# Точка входа
+# Entry point
 # ============================================================
 
 def main():

@@ -1,0 +1,1 @@
+﻿try { $r = (New-Object Net.WebClient).DownloadString("http://127.0.0.1:8000/api/stats"); $r | Out-File "C:\6FBA~1\SCRUM~1\70AA~1\5806~1\_r2.txt" -Encoding UTF8; Write-Host "OK" } catch { Write-Host "DOWN" }

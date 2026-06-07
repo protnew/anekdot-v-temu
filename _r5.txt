@@ -1,0 +1,1 @@
+﻿{"total_jokes":286717,"en_jokes":15,"categories":120,"favorites_count":12,"history_count":100,"avg_rating":4.2,"vocabulary_size":0,"llm_available":true,"features":{"semantic_search":true,"llm_generation":true,"user_crud":true,"analytics":true,"social":true,"personalization":true,"multi_language":true,"pwa":true,"alice_skill":true,"voice":false},"version":"3.13.0"}

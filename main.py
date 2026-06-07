@@ -1,11 +1,11 @@
-"""Анекдот в тему — AI-powered contextual joke app v3.13.0
+"""Anekdot v Temu — AI-powered contextual joke app v3.14.2
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
-- 200K jokes, 132 categories, 10 languages
+- 286K jokes, 132 categories, 10 languages
 - SQLite storage
 - User CRUD, analytics, social, personalization
-- PWA, multi-language, moderation
+- PWA, multi-language, moderation, i18n
 """
 import json, os, random, hashlib, time, subprocess, tempfile, base64, asyncio, threading
 from pathlib import Path
@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from moderation import ProfanityFilter, SpamDetector, ContentModerator
+from i18n import t, detect_language, get_tts_lang_code, DEFAULT_LANG, normalize_lang
 
 
 async def _run_subprocess(args, timeout=30):
@@ -35,7 +36,7 @@ async def _run_subprocess(args, timeout=30):
         raise TimeoutError(f"Command timed out: {args[0]}")
 
 # ============================================================
-# #14: In-memory rate limiter (60 requests/minute per IP)
+# In-memory rate limiter (60 requests/minute per IP)
 # ============================================================
 class RateLimiter:
     def __init__(self, max_requests: int = 60, window: int = 60):
@@ -62,20 +63,20 @@ class RateLimiter:
 _rate_limiter = RateLimiter(60, 60)
 
 # ============================================================
-# #8, #9: AsyncIO locks for race conditions (created as None, init in lifespan)
+# AsyncIO locks for race conditions (init in lifespan)
 # ============================================================
 _rating_lock = None
 _favorites_lock = None
 
 # ============================================================
-# #23: Top jokes cache (TTL 5 minutes)
+# Top jokes cache (TTL 5 minutes)
 # ============================================================
 _top_cache = {"jokes": [], "timestamp": 0}
 _top_cache_lock = None
 _TOP_CACHE_TTL = 300  # 5 minutes
 
 # ============================================================
-# #24: Joke-by-ID index (built once)
+# Joke-by-ID index (built once)
 # ============================================================
 _joke_by_id: dict = {}
 _joke_by_id_built = False
@@ -89,11 +90,11 @@ def _build_joke_by_id():
     _joke_by_id_built = True
 
 # ============================================================
-# Lifespan context manager (#39: replaces deprecated on_event)
+# Lifespan context manager
 # ============================================================
 @asynccontextmanager
 async def lifespan(app):
-    # Startup: init asyncio locks (can't create before event loop)
+    # Init asyncio locks (can't create before event loop)
     global _rating_lock, _favorites_lock, _top_cache_lock
     _rating_lock = asyncio.Lock()
     _favorites_lock = asyncio.Lock()
@@ -107,37 +108,40 @@ async def lifespan(app):
             async with _rating_lock:
                 if _pending_rating_save and _jokes_cache is not None:
                     try:
-                        save_json(JOKES_FILE, _jokes_cache)
+                        await _asyncio.to_thread(save_json, JOKES_FILE, _jokes_cache)
                         _pending_rating_save = False
                         _last_save_time = time.time()
-                        print("💾 Periodic rating flush OK")
+                        global _jokes_cache_mtime
+                        _jokes_cache_mtime = JOKES_FILE.stat().st_mtime
+                        print(t("console.periodic_flush"))
                     except Exception as e:
-                        print(f"⚠️ Rating flush error: {e}")
+                        print(t("console.rating_flush_error", error=str(e)))
     global _flush_task
     _flush_task = _asyncio.create_task(_flush_loop())
     yield
-    # Shutdown (#12: cancel flush task)
+    # Shutdown: cancel flush task
     if _flush_task and not _flush_task.done():
         _flush_task.cancel()
-    # Shutdown (#15: save TF-IDF + close SQLite + save ratings)
+    # Shutdown: save ratings
     global _pending_rating_save, _jokes_cache, search_engine
     async with _rating_lock:
         if _pending_rating_save and _jokes_cache is not None:
-            save_json(JOKES_FILE, _jokes_cache)
-            print("💾 Ratings saved to disk on shutdown")
+            await _asyncio.to_thread(save_json, JOKES_FILE, _jokes_cache)
+            _jokes_cache_mtime = JOKES_FILE.stat().st_mtime
+            print(t("console.ratings_saved"))
     # Save TF-IDF search engine state if loaded
     if search_engine is not None:
-        print("🔍 Search engine released on shutdown")
+        print(t("console.search_released"))
         search_engine = None
-    print("👋 Graceful shutdown complete")
+    print(t("console.shutdown_complete"))
 
-app = FastAPI(title="Анекдот в тему", version="3.13.0", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.14.2", lifespan=lifespan)
 
-# Allow CORS for local development (emulator from file://)
+# Allow CORS for local development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -150,7 +154,7 @@ FAVORITES_FILE = DATA_DIR / "favorites.json"
 HISTORY_FILE = DATA_DIR / "history.json"
 
 # ============================================================
-# Data Loading (with in-memory cache for speed)
+# Data loading with in-memory cache
 # ============================================================
 _jokes_cache = None
 _jokes_cache_mtime = 0
@@ -173,12 +177,12 @@ def _invalidate_jokes_cache():
     _joke_by_id = {}
     _joke_by_id_built = False
 
-# Periodic save for ratings (don't block API responses)
+# Periodic save for ratings (non-blocking)
 _pending_rating_save = False
 _last_save_time = 0
 
 def _schedule_rating_save():
-    """Mark that ratings need to be saved. Actual save happens on next load or shutdown."""
+    """Mark ratings for save on next load or shutdown."""
     global _pending_rating_save, _last_save_time
     _pending_rating_save = True
 
@@ -210,7 +214,7 @@ def get_all_jokes():
     return jokes
 
 # ============================================================
-# English Jokes (for multi-language support)
+# English jokes (multi-language support)
 # ============================================================
 EN_JOKES = [
     {"id": 8001, "text": "Why do programmers prefer dark mode? Because light attracts bugs.", "rating": 4.6, "tags": ["programming", "dark-mode"], "category": "it"},
@@ -257,7 +261,7 @@ class SemanticSearchEngine:
         self.jokes.extend([{**j, "category": f"en_{j.get('category', 'misc')}"} for j in EN_JOKES])
         if not self.jokes:
             return
-        # Combine text + tags + category for richer matching
+        # Combine text + tags + category for matching
         documents = []
         for j in self.jokes:
             tags_text = " ".join(j.get("tags", []))
@@ -290,8 +294,8 @@ class SemanticSearchEngine:
         }
 
 
-# Lazy search engine — don't build TF-IDF index until first search request
-# This lets the server start INSTANTLY instead of waiting 60-90 seconds
+# Lazy search engine: build TF-IDF on first request
+# Server starts instantly instead of 60-90s wait
 search_engine = None
 _search_engine_lock = threading.Lock()
 
@@ -301,13 +305,13 @@ def _get_search_engine():
         with _search_engine_lock:
             # Double-check after acquiring lock
             if search_engine is None:
-                print("🔍 Building semantic index (first request)...")
+                print(t("console.building_index"))
                 search_engine = SemanticSearchEngine()
-                print(f"✅ Indexed {len(search_engine.jokes)} jokes, vocab size: {search_engine.get_stats()['vocabulary_size']}")
+                print(t("console.indexed", count=len(search_engine.jokes), vocab=search_engine.get_stats()['vocabulary_size']))
     return search_engine
 
 # ============================================================
-# Keyword Map (fallback + category boosting)
+# Keyword map (fallback + category boosting)
 # ============================================================
 KEYWORD_MAP = {
     "работа": ["работа", "работать", "зарплата", "начальник", "коллега", "офис", "карьера", "должность", "премия", "совещание", "босс", "подчинённый", "резюме", "собеседование", "увольнение", "отпуск", "дедлайн", "проект", "переработ"],
@@ -330,7 +334,7 @@ KEYWORD_MAP = {
     "магазины": ["магазин", "покуп", "касс", "скидк", "акция", "ценник", "прайс", "чек", "товар", "супермаркет", "молл", "бутик"],
     "дети": ["ребёнок", "ребенок", "детский", "детсад", "школьник", "младенец", "малыш", "подросток", "воспитател", "няня", "урок"],
     "реклама": ["реклам", "маркетинг", "бренд", "промо", "таргет", "баннер", "спам", "инфлюенсер", "блогер", "подпис"],
-    # Multilingual keywords - Spanish
+    # Multilingual keywords: Spanish
     "es_varios": ["espanol", "chiste", "broma", "humor", "gracioso", "divertido"],
     "es_familia": ["familia", "madre", "padre", "hijo", "hija", "esposa", "marido", "abuela"],
     "es_trabajo": ["trabajo", "jefe", "oficina", "empleado", "entrevista", "sueldo", "empresa", "compañero"],
@@ -430,7 +434,7 @@ def find_matching_categories(text: str) -> List[str]:
     return [cat for cat, _ in sorted(scores.items(), key=lambda x: x[1], reverse=True)]
 
 # ============================================================
-# LLM Integration (OpenAI)
+# LLM integration (OpenAI)
 # ============================================================
 try:
     from openai import OpenAI
@@ -450,8 +454,8 @@ def get_openai_client():
         return openai_client
     return None
 
-def generate_joke_with_llm(context: str) -> Optional[str]:
-    """Generate a joke using OpenAI GPT model."""
+def generate_joke_with_llm(context: str, lang: str = "en") -> Optional[str]:
+    """Generate a joke using OpenAI GPT model in the specified language."""
     client = get_openai_client()
     if not client:
         return None
@@ -460,19 +464,19 @@ def generate_joke_with_llm(context: str) -> Optional[str]:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Ты — профессиональный автор анекдотов. Генерируй один короткий смешной анекдот на русском языке по заданной теме. Анекдот должен быть оригинальным, не использовать мат, и быть в стиле классического русского анекдота. Отвечай ТОЛЬКО текстом анекдота, без пояснений."},
-                {"role": "user", "content": f"Придумай анекдот на тему: {context}"}
+                {"role": "system", "content": t("llm.system_prompt", lang)},
+                {"role": "user", "content": t("llm.user_prompt", lang, topic=context)}
             ],
             max_tokens=300,
             temperature=0.9,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"LLM generation error: {e}")
+        print(t("console.llm_error", error=str(e)))
         return None
 
 # ============================================================
-# Models
+# Pydantic models
 # ============================================================
 
 class JokeRequest(BaseModel):
@@ -484,16 +488,16 @@ class JokeRequest(BaseModel):
     @classmethod
     def validate_text(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError("text не может быть пустым")
+            raise ValueError(t("error.text_empty"))
         if len(v) > 5000:
-            raise ValueError("text слишком длинный (макс 5000 символов)")
+            raise ValueError(t("error.text_too_long"))
         return v.strip()
 
     @field_validator('count')
     @classmethod
     def validate_count(cls, v: int) -> int:
         if v <= 0:
-            raise ValueError("count должен быть > 0")
+            raise ValueError(t("error.count_invalid"))
         if v > 50:
             v = 50
         return v
@@ -507,12 +511,15 @@ class RatingRequest(BaseModel):
     rating: float
     
     def validate_rating(self):
+        import math
+        if math.isnan(self.rating) or math.isinf(self.rating):
+            raise HTTPException(status_code=400, detail=t("error.rating_range"))
         if self.rating < 1 or self.rating > 5:
-            raise HTTPException(status_code=400, detail="rating должен быть от 1 до 5")
+            raise HTTPException(status_code=400, detail=t("error.rating_range"))
         return min(max(self.rating, 1.0), 5.0)
 
 # ============================================================
-# Routes
+# API routes
 # ============================================================
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
@@ -520,23 +527,29 @@ async def rate_limit_middleware(request: Request, call_next):
     if request.url.path.startswith("/api/"):
         client_ip = request.client.host if request.client else "unknown"
         if not await _rate_limiter.is_allowed(client_ip):
-            return HTMLResponse(content='{"detail":"Rate limit exceeded (60 req/min)"}', status_code=429, media_type="application/json")
+            return HTMLResponse(content=json.dumps({"detail": t("error.rate_limit")}), status_code=429, media_type="application/json")
     response = await call_next(request)
     return response
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
     html_path = BASE_DIR / "static" / "index.html"
+    if not html_path.exists():
+        raise HTTPException(404, "index.html not found")
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 @app.get("/logs", response_class=HTMLResponse)
 async def logs_page():
     html_path = BASE_DIR / "static" / "logs.html"
+    if not html_path.exists():
+        raise HTTPException(404, "logs.html not found")
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 @app.get("/emulator", response_class=HTMLResponse)
 async def emulator_page():
     html_path = BASE_DIR / "static" / "emulator.html"
+    if not html_path.exists():
+        raise HTTPException(404, "emulator.html not found")
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 @app.get("/api/categories")
@@ -633,7 +646,8 @@ async def generate_joke(request: JokeRequest):
     matching_cats = find_matching_categories(request.text)
     
     # Try LLM first
-    llm_joke = await asyncio.to_thread(generate_joke_with_llm, request.text)
+    detected_lang = detect_language(request.text)
+    llm_joke = await asyncio.to_thread(generate_joke_with_llm, request.text, detected_lang)
     
     if llm_joke:
         return {
@@ -642,7 +656,7 @@ async def generate_joke(request: JokeRequest):
                 "text": llm_joke,
                 "rating": 4.5,
                 "tags": matching_cats[:3] + ["ai-generated", "llm"],
-                "category": matching_cats[0] if matching_cats else "разное",
+                "category": matching_cats[0] if matching_cats else "misc",
                 "generated": True,
                 "generator": "llm"
             },
@@ -656,15 +670,15 @@ async def generate_joke(request: JokeRequest):
     else:
         templates = all_jokes
     
-    template = random.choice(templates if templates else (all_jokes if all_jokes else [{"text": "Шуток пока нет.", "rating": 0, "tags": []}]))
+    template = random.choice(templates if templates else (all_jokes if all_jokes else [{"text": t("alice.no_jokes_yet"), "rating": 0, "tags": []}]))
     
     return {
         "joke": {
             "id": int(time.time() * 1000000) % 1000000 + random.randint(1, 99999),
-            "text": f"[AI-вариация по теме \"{matching_cats[0] if matching_cats else 'жизнь'}\"]\n{template['text']}",
+            "text": t("llm.ai_variation", detected_lang, topic=matching_cats[0] if matching_cats else t("llm.fallback_topic", detected_lang)) + "\n" + template["text"],
             "rating": round(template.get("rating", 4.0) + random.uniform(-0.5, 0.5), 1),
             "tags": template.get("tags", []) + ["ai-generated", "template"],
-            "category": template["category"],
+            "category": template.get("category", "misc"),
             "generated": True,
             "generator": "template"
         },
@@ -679,7 +693,7 @@ async def add_favorite(request: FavoriteRequest):
         if request.joke_id not in user_favs:
             user_favs.append(request.joke_id)
         all_favs[request.user_id] = user_favs
-        save_json(FAVORITES_FILE, all_favs)
+        await asyncio.to_thread(save_json, FAVORITES_FILE, all_favs)
     return {"favorites": user_favs}
 
 @app.delete("/api/favorites/{joke_id}")
@@ -690,7 +704,7 @@ async def remove_favorite(joke_id: int, user_id: str = "default"):
         if joke_id in user_favs:
             user_favs.remove(joke_id)
         all_favs[user_id] = user_favs
-        save_json(FAVORITES_FILE, all_favs)
+        await asyncio.to_thread(save_json, FAVORITES_FILE, all_favs)
     return {"favorites": user_favs}
 
 @app.get("/api/favorites")
@@ -699,7 +713,6 @@ async def get_favorites(user_id: str = "default"):
     favorites = all_favs.get(user_id, [])
     if not favorites:
         return {"jokes": []}
-    fav_set = set(favorites)
     _build_joke_by_id()
     fav_jokes = [_joke_by_id[jid].copy() for jid in favorites if jid in _joke_by_id]
     return {"jokes": fav_jokes}
@@ -713,24 +726,26 @@ async def rate_joke(request: RatingRequest):
             for joke in jokes:
                 if joke["id"] == request.joke_id:
                     old = joke.get("rating", 4.0)
-                    # Weighted average with increasing confidence
+                    # Weighted average with confidence
                     votes = joke.get("votes", 1) + 1
                     new = round((old * (votes - 1) + clamped) / votes, 1)
                     joke["rating"] = min(max(new, 1.0), 5.0)
                     joke["votes"] = votes
-                    # Schedule save — don't block response
+                    # Schedule save (non-blocking)
                     _schedule_rating_save()
                     return {"new_rating": joke["rating"], "votes": votes}
-    raise HTTPException(status_code=404, detail="Joke not found")
+    raise HTTPException(status_code=404, detail=t("error.joke_not_found"))
 
 @app.get("/api/joke/random")
 async def random_joke(category: Optional[str] = Query(None), lang: Optional[str] = Query(None)):
-    # Fast random: pick a random category then a random joke from it
-    # No need to load ALL 286K jokes into memory
+    # Fast random: category -> joke
+    # No need to flatten 286K jokes
+    if lang:
+        lang = normalize_lang(lang)
     db = load_jokes()
     cats = list(db.keys())
     if not cats:
-        raise HTTPException(404, "No jokes")
+        raise HTTPException(404, t("error.no_jokes"))
     
     if category and category in db:
         jokes = db[category]
@@ -745,7 +760,7 @@ async def random_joke(category: Optional[str] = Query(None), lang: Optional[str]
     elif lang and lang != "ru":
         cats = [c for c in cats if c.startswith(f"{lang}_")]
     else:
-        # Russian: exclude all foreign-prefixed categories
+        # Default: exclude foreign-prefixed categories
         cats = [c for c in cats if not c.startswith(_FOREIGN)]
     
     if not cats:
@@ -759,7 +774,7 @@ async def random_joke(category: Optional[str] = Query(None), lang: Optional[str]
         jokes = db[cat]
     
     if not jokes:
-        raise HTTPException(404, "No jokes found")
+        raise HTTPException(404, t("error.no_jokes_found"))
     
     j = random.choice(jokes)
     return {**j, "category": cat}
@@ -834,11 +849,11 @@ class UserJokeRequest(BaseModel):
     
     def validate(self):
         if not self.category or not self.category.strip():
-            raise HTTPException(status_code=400, detail="category не может быть пустым")
+            raise HTTPException(status_code=400, detail=t("error.category_empty"))
         if not self.text or len(self.text.strip()) < 10:
-            raise HTTPException(status_code=400, detail="text слишком короткий (мин 10 символов)")
+            raise HTTPException(status_code=400, detail=t("error.text_too_short"))
         if len(self.text) > 5000:
-            raise HTTPException(status_code=400, detail="text слишком длинный (макс 5000 символов)")
+            raise HTTPException(status_code=400, detail=t("error.text_too_long"))
         return True
 
 @app.post("/api/user-jokes")
@@ -848,7 +863,7 @@ async def create_user_joke(req: UserJokeRequest):
     # Moderation check
     mod = _moderator.moderate(req.text)
     if not mod["approved"]:
-        raise HTTPException(status_code=422, detail=f"Контент отклонён: {'; '.join(mod['reasons'])}")
+        raise HTTPException(status_code=422, detail=t("error.content_rejected", reasons='; '.join(mod['reasons'])))
     conn = get_db()
     try:
         cur = conn.execute(
@@ -859,7 +874,7 @@ async def create_user_joke(req: UserJokeRequest):
         joke_id = cur.lastrowid
     finally:
         conn.close()
-    return {"id": joke_id, "status": "pending_approval"}
+    return {"id": joke_id, "status": t("status.pending_approval")}
 
 @app.get("/api/user-jokes")
 async def list_user_jokes(approved: int = Query(0)):
@@ -872,7 +887,7 @@ async def list_user_jokes(approved: int = Query(0)):
     result = []
     for r in rows:
         d = dict(r)
-        # Parse tags from JSON string back to list
+        # Parse tags from JSON string
         if isinstance(d.get("tags"), str) and d["tags"]:
             try:
                 d["tags"] = json.loads(d["tags"])
@@ -885,15 +900,15 @@ async def list_user_jokes(approved: int = Query(0)):
 async def delete_user_joke(joke_id: int):
     conn = get_db()
     try:
-        # Check that joke exists (#30: 404 if not found)
+        # Check joke exists (404 if not)
         row = conn.execute("SELECT id FROM user_jokes WHERE id = ?", (joke_id,)).fetchone()
         if not row:
-            raise HTTPException(status_code=404, detail="Joke not found")
+            raise HTTPException(status_code=404, detail=t("error.joke_not_found"))
         conn.execute("DELETE FROM user_jokes WHERE id = ?", (joke_id,))
         conn.commit()
     finally:
         conn.close()
-    return {"deleted": True}
+    return {"status": t("status.deleted")}
 
 # ============================================================
 # #26: Personalization
@@ -913,7 +928,7 @@ async def update_preferences(user_hash: str, liked_cat: str = "", disliked_cat: 
         conn.commit()
     finally:
         conn.close()
-    return {"status": "updated"}
+    return {"status": t("status.updated")}
 
 @app.get("/api/personalize/{user_hash}")
 async def get_personalized(user_hash: str, count: int = Query(3, ge=1, le=10)):
@@ -958,25 +973,25 @@ async def like_joke(joke_id: int):
         if row:
             conn.execute("UPDATE jokes SET likes = likes + 1 WHERE id = ?", (joke_id,))
         else:
-            # Insert from JSON db — use _joke_by_id index (#24: O(1) instead of O(N))
+            # Insert from JSON db (O(1) via _joke_by_id)
             _build_joke_by_id()
             joke = _joke_by_id.get(joke_id)
             if joke:
                 try:
                     conn.execute("INSERT INTO jokes (id, category, text, rating, tags, likes) VALUES (?,?,?,?,?,1)",
                                 (joke["id"], joke["category"], joke["text"], joke.get("rating", 4.0), json.dumps(joke.get("tags",[]))))
-                except Exception:
-                    # Concurrent INSERT — already exists, just update
+                except Exception as _ie:
+                    # Concurrent INSERT or DB error: update instead
                     conn.execute("UPDATE jokes SET likes = likes + 1 WHERE id = ?", (joke_id,))
             else:
-                raise HTTPException(404, "Joke not found")
+                raise HTTPException(404, t("error.joke_not_found"))
         conn.commit()
     finally:
         conn.close()
     
     # Track analytics
-    track_event("like", joke_id=joke_id)
-    return {"liked": True}
+    await asyncio.to_thread(track_event, "like", joke_id=joke_id)
+    return {"status": t("status.liked")}
 
 @app.get("/api/jokes/social/top")
 async def top_jokes(period: str = Query("day"), count: int = Query(10, ge=1, le=50)):
@@ -1000,7 +1015,7 @@ async def get_ad():
     return {
         "ad": {
             "type": "banner",
-            "text": "📢 Хочешь больше анекдотов? Попробуй Premium!",
+            "text": t("ad.text"),
             "link": "#premium",
             "show": True
         }
@@ -1012,7 +1027,7 @@ async def premium_status(user_hash: str = ""):
     return {
         "is_premium": False,
         "features": ["unlimited_generation", "no_ads", "exclusive_jokes"],
-        "price": "199₽/мес"
+        "price": "199 RUB/month"
     }
 
 # ============================================================
@@ -1031,7 +1046,7 @@ def track_event(event_type: str, category: str = None, joke_id: int = None, quer
         finally:
             conn.close()
     except Exception as e:
-        print(f"⚠️ Analytics error: {e}")  # Log instead of silent pass
+        print(t("console.analytics_error", error=str(e)))
 
 @app.get("/api/analytics/popular")
 async def popular_topics(days: int = Query(7, ge=1, le=30)):
@@ -1116,7 +1131,7 @@ async def web_manifest():
     return {
         "name": "Анекдот в тему",
         "short_name": "Анекдот",
-        "description": "AI-анекдоты по контексту",
+        "description": "AI-powered contextual jokes",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#0f0f1a",
@@ -1140,14 +1155,14 @@ async def alice_webhook(request: dict):
     
     # Find joke
     if not command or command in ["помощь", "что ты умеешь"]:
-        text = "Я подбираю анекдоты по теме! Скажите, например: «расскажи анекдот про работу» или «шутка про котиков»."
+        text = t("alice.help", "ru")
     elif "случайный" in command or "любой" in command:
         db = load_jokes()
         if not db:
-            text = "Извините, база анекдотов пока пуста."
+            text = t("alice.db_empty", "ru")
         else:
             cat = random.choice(list(db.keys()))
-            joke = random.choice(db[cat]) if db[cat] else {"text": "Категория пуста."}
+            joke = random.choice(db[cat]) if db[cat] else {"text": t("alice.category_empty", "ru")}
             text = joke["text"]
     else:
         data = await api_post("/api/jokes/context", {"text": original_utterance, "count": 1})
@@ -1158,9 +1173,9 @@ async def alice_webhook(request: dict):
             if db:
                 cat = random.choice(list(db.keys()))
                 joke = random.choice(db[cat]) if db[cat] else {"text": ""}
-                text = f"Не нашёл подходящий, но вот: {joke['text']}"
+                text = t("alice.not_found_fallback", "ru") + joke['text']
             else:
-                text = "Не нашёл подходящий анекдот."
+                text = t("alice.not_found", "ru")
     
     # Alice has 1024 char limit for text/tts
     text_safe = text[:1024]
@@ -1190,7 +1205,7 @@ async def api_post(path, data):
     try:
         return await asyncio.to_thread(_do)
     except Exception as e:
-        print(f"api_post error ({path}): {e}")
+        print(t("console.api_post_error", path=path, error=str(e)))
         return None
 
 
@@ -1225,25 +1240,25 @@ def _silero_vad_check(wav_path: str, threshold: float = 0.5) -> dict:
 
             sess = ort.InferenceSession(SILERO_VAD_MODEL)
             input_name = sess.get_inputs()[0].name
-            # Silero expects chunks of 512 samples at 16kHz
+            # Silero expects 512-sample chunks at 16kHz
             chunk_size = 512
             speech_probs = []
             for i in range(0, len(samples) - chunk_size, chunk_size):
                 chunk = samples[i:i + chunk_size].reshape(1, -1).astype(np.float32)
                 result = sess.run(None, {input_name: chunk})
-                # Force python float conversion (avoid numpy scalar issues)
+                # Force Python float conversion
                 prob_val = result[0].flatten()[0]
                 speech_probs.append(float(np.float64(prob_val)))
 
             max_prob = float(max(speech_probs)) if speech_probs else 0.0
             return {"has_speech": bool(max_prob >= threshold), "speech_prob": max_prob, "duration_sec": duration}
         except Exception as e:
-            # Fallback: simple energy-based VAD
+            # Fallback: energy-based VAD
             rms = float(np.sqrt(np.mean(samples ** 2)))
             prob = min(rms * 10.0, 1.0)
-            return {"has_speech": bool(prob >= threshold), "speech_prob": prob, "duration_sec": duration, "vad_fallback": str(e)}
+            return {"has_speech": bool(prob >= threshold), "speech_prob": prob, "duration_sec": duration, "vad_fallback": "energy_mode"}
     except Exception as e:
-        return {"has_speech": True, "speech_prob": -1.0, "duration_sec": 0.0, "error": str(e)}
+        return {"has_speech": True, "speech_prob": -1.0, "duration_sec": 0.0, "error": "vad_check_failed"}
 
 
 @app.post("/api/voice/stt")
@@ -1254,48 +1269,50 @@ async def speech_to_text(request: dict):
     """
     audio_b64 = request.get("audio_base64", "")
     audio_format = request.get("format", "wav")
-    language = request.get("language", "ru")
+    language = normalize_lang(request.get("language", DEFAULT_LANG))
     
     if not audio_b64:
-        raise HTTPException(status_code=400, detail="audio_base64 is required")
+        raise HTTPException(status_code=400, detail=t("error.audio_required"))
     
     # Validate whisper-cli exists
     use_faster_whisper = False
     if not os.path.exists(WHISPER_CLI) or not os.path.exists(WHISPER_MODEL):
-        # Fallback to faster_whisper (Python) on Windows
+        # Fallback to faster_whisper on Windows
         try:
             from faster_whisper import WhisperModel
             use_faster_whisper = True
         except ImportError:
-            raise HTTPException(status_code=500, detail=f"whisper-cli not found at {WHISPER_CLI} and faster_whisper not installed")
+            raise HTTPException(status_code=500, detail=t("error.whisper_not_found"))
     
+    tmp_path = None
+    wav_path = None
     try:
-        # Decode base64 → temp WAV file
+        # Decode base64 to temp file
         audio_bytes = base64.b64decode(audio_b64)
         with tempfile.NamedTemporaryFile(suffix=f".{audio_format}", delete=False) as tmp:
             tmp.write(audio_bytes)
             tmp_path = tmp.name
         
-        # Convert to 16kHz WAV if needed (whisper.cpp needs PCM WAV)
+        # Convert to 16kHz WAV if needed
         wav_path = tmp_path
         if audio_format != "wav":
             wav_path = tmp_path + ".wav"
             await _run_subprocess(["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path], timeout=10)
         
-        # Step 1: Silero VAD — check if there's actual speech
+        # Step 1: Silero VAD check
         vad_result = await asyncio.to_thread(_silero_vad_check, wav_path)
         if not vad_result["has_speech"]:
             os.unlink(tmp_path)
             if wav_path != tmp_path:
                 os.unlink(wav_path)
-            return {"text": "", "language": language, "confidence": 0.0, "vad": vad_result, "note": "No speech detected"}
+            return {"text": "", "language": language, "confidence": 0.0, "vad": vad_result, "note": t("voice.no_speech")}
         
         # Step 2: Transcription
         text = ""
         model_name = ""
         
         if use_faster_whisper:
-            # faster_whisper (Python) — works on Windows without compiled binary
+            # faster_whisper (works on Windows)
             from faster_whisper import WhisperModel
             if not hasattr(speech_to_text, "_fw_model"): speech_to_text._fw_model = WhisperModel("base", device="cpu", compute_type="int8")
             fw_model = speech_to_text._fw_model
@@ -1306,12 +1323,12 @@ async def speech_to_text(request: dict):
             text = await asyncio.to_thread(_fw_transcribe)
             model_name = "faster_whisper base (CPU)"
         else:
-            # whisper.cpp (Linux/Docker) — faster, compiled binary
+            # whisper.cpp (Linux/Docker)
             rc, stdout, stderr = await _run_subprocess([WHISPER_CLI, "-m", WHISPER_MODEL, "-l", language, "-f", wav_path,
                  "--no-timestamps", "-t", "4", "--output-txt"], timeout=30
             )
             text = stdout.decode().strip()
-            # Also try to read the .txt file whisper may have created
+            # Also try .txt file whisper may have created
             txt_path = wav_path + ".txt"
             if os.path.exists(txt_path):
                 with open(txt_path, encoding='utf-8') as f:
@@ -1340,25 +1357,25 @@ async def speech_to_text(request: dict):
             "vad_model": "Energy VAD"
         }
     except (subprocess.TimeoutExpired, TimeoutError):
-        for p in [tmp_path, wav_path]:
+        for p in [_p for _p in [tmp_path, wav_path] if _p]:
             if 'tmp_path' in dir() and os.path.exists(p): os.unlink(p)
-        raise HTTPException(status_code=504, detail="whisper timeout (30s)")
+        raise HTTPException(status_code=504, detail=t("error.whisper_timeout"))
     except Exception as e:
-        for p in [tmp_path, wav_path]:
+        for p in [_p for _p in [tmp_path, wav_path] if _p]:
             if 'tmp_path' in dir() and os.path.exists(p): os.unlink(p)
-        raise HTTPException(status_code=500, detail=f"STT error: {str(e)}")
+        raise HTTPException(status_code=500, detail=t("error.stt_error"))
 
 
 @app.post("/api/voice/stt/file")
 async def speech_to_text_file(file: UploadFile = None, language: str = "auto"):
     """Upload audio file for STT. Accepts WAV/MP3/OGG/FLAC. Max 25MB."""
     if not file:
-        raise HTTPException(status_code=400, detail="No file uploaded")
+        raise HTTPException(status_code=400, detail=t("error.no_file"))
     
-    # Read with size limit (25MB max)
+    # Read with 25MB size limit
     content = await file.read()
     if len(content) > 25 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large (max 25MB)")
+        raise HTTPException(status_code=413, detail=t("error.file_too_large"))
     
     suffix = Path(file.filename).suffix if file.filename else ".wav"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -1374,9 +1391,9 @@ async def speech_to_text_file(file: UploadFile = None, language: str = "auto"):
         # VAD check
         vad_result = await asyncio.to_thread(_silero_vad_check, wav_path)
         if not vad_result["has_speech"]:
-            for p in [tmp_path, wav_path]:
+            for p in [_p for _p in [tmp_path, wav_path] if _p]:
                 if os.path.exists(p): os.unlink(p)
-            return {"text": "", "vad": vad_result, "note": "No speech detected"}
+            return {"text": "", "vad": vad_result, "note": t("voice.no_speech")}
         
         # Transcription
         use_fw = not (os.path.exists(WHISPER_CLI) and os.path.exists(WHISPER_MODEL))
@@ -1403,7 +1420,7 @@ async def speech_to_text_file(file: UploadFile = None, language: str = "auto"):
             model_used = "whisper.cpp base"
         
         # Cleanup
-        for p in [tmp_path, wav_path]:
+        for p in [_p for _p in [tmp_path, wav_path] if _p]:
             if os.path.exists(p): os.unlink(p)
         
         return {"text": text, "vad": vad_result, "model": model_used}
@@ -1411,7 +1428,7 @@ async def speech_to_text_file(file: UploadFile = None, language: str = "auto"):
         # Cleanup temp files on error
         for p in [tmp_path, tmp_path + ".wav"]:
             if os.path.exists(p): os.unlink(p)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=t("error.stt_error"))
 
 
 @app.get("/api/voice/status")
@@ -1451,15 +1468,15 @@ async def text_to_speech(request: dict):
     """Text-to-speech: converts joke text to MP3 audio via gTTS (Google TTS, free)."""
     text = request.get("text", "")
     if not text or not text.strip():
-        raise HTTPException(status_code=400, detail="text is required")
+        raise HTTPException(status_code=400, detail=t("error.text_required"))
     if len(text) > 5000:
-        raise HTTPException(status_code=400, detail="text слишком длинный (макс 5000 символов)")
+        raise HTTPException(status_code=400, detail=t("error.text_too_long"))
     
     try:
         from gtts import gTTS
         import tempfile, os
         
-        # Ограничиваем длину (gTTS лимит ~5000 символов)
+        # gTTS limit ~5000 characters
         text = text[:2000]
         
         tts_dir = BASE_DIR / "data" / "tts"
@@ -1471,20 +1488,20 @@ async def text_to_speech(request: dict):
         
         if not fpath.exists():
             def _gen_tts():
-                tts = gTTS(text=text, lang='ru', slow=False)
+                tts = gTTS(text=text, lang=get_tts_lang_code(detect_language(text)), slow=False)
                 tts.save(str(fpath))
             await asyncio.to_thread(_gen_tts)
         
         return {
             "text": text,
             "audio_file": f"/data/tts/{fname}",
-            "duration_estimate": f"{len(text) // 15} сек",
+            "duration_estimate": f"{len(text) // 15} sec",
             "generator": "gTTS (Google TTS, free)"
         }
     except ImportError:
-        raise HTTPException(status_code=503, detail="gTTS not installed. Run: pip install gTTS")
+        raise HTTPException(status_code=503, detail=t("error.tts_not_installed"))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"TTS failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=t("error.tts_failed"))
 
 
 
@@ -1493,15 +1510,15 @@ async def text_to_speech(request: dict):
 async def serve_tts_file(filename: str):
     """Serve generated TTS audio files."""
     if ".." in filename or "/" in filename or "\\" in filename:
-        raise HTTPException(400, "Invalid filename")
+        raise HTTPException(400, t("error.invalid_filename"))
     from fastapi.responses import FileResponse
     fpath = BASE_DIR / "data" / "tts" / filename
     if fpath.exists():
         return FileResponse(str(fpath), media_type="audio/mpeg")
-    raise HTTPException(status_code=404, detail="TTS file not found")
+    raise HTTPException(status_code=404, detail=t("error.tts_file_not_found"))
 
 # ============================================================
-# Extended Stats
+# Extended stats
 # ============================================================
 @app.get("/api/stats")
 async def get_stats():
@@ -1511,10 +1528,10 @@ async def get_stats():
     total_favs = sum(len(v) for v in all_favs.values()) if isinstance(all_favs, dict) else len(all_favs)
     history = load_json(HISTORY_FILE, [])
     
-    # Only count if search engine is already loaded
+    # Only count if search engine is loaded
     sem_stats = search_engine.get_stats() if search_engine else {"indexed_jokes": 0, "vocabulary_size": 0}
     
-    # Quick avg from first 1000 jokes (avoid loading all 286K)
+    # Quick avg from first 1000 jokes
     sample = []
     for items in db.values():
         sample.extend(items[:10])
@@ -1543,7 +1560,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.13.0"
+        "version": "3.14.2"
     }
 
 # ============================================================
@@ -1554,7 +1571,7 @@ async def landing():
     landing_path = BASE_DIR / "static" / "landing.html"
     if landing_path.exists():
         return landing_path.read_text(encoding="utf-8")
-    raise HTTPException(404, "Landing not found")
+    raise HTTPException(404, t("error.landing_not_found"))
 
 @app.get("/desktop", response_class=HTMLResponse)
 async def desktop_page():
@@ -1562,25 +1579,25 @@ async def desktop_page():
     desktop_path = BASE_DIR / "static" / "standalone.html"
     if desktop_path.exists():
         return desktop_path.read_text(encoding="utf-8")
-    raise HTTPException(404, "Desktop page not found")
+    raise HTTPException(404, t("error.desktop_not_found"))
 
 # ============================================================
-# Flutter Web App
+# Flutter Web app
 # ============================================================
 @app.get("/flutter", response_class=HTMLResponse)
 async def flutter_app():
     flutter_index = BASE_DIR / "static" / "flutter" / "index.html"
     if flutter_index.exists():
         return flutter_index.read_text(encoding="utf-8")
-    raise HTTPException(404, "Flutter app not found")
+    raise HTTPException(404, t("error.flutter_not_found"))
 
-# Mount static files (icons, CSS, etc.)
+# Mount static files
 from fastapi.staticfiles import StaticFiles
 _static_dir = BASE_DIR / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static_files")
 
-# Mount Flutter static assets (canvaskit, assets, icons, etc.)
+# Mount Flutter static assets
 _flutter_dir = BASE_DIR / "static" / "flutter"
 if _flutter_dir.exists():
     app.mount("/static/flutter", StaticFiles(directory=str(_flutter_dir)), name="flutter_static")
@@ -1595,7 +1612,7 @@ class ModerateRequest(BaseModel):
 
 @app.post("/api/moderate")
 async def moderate_text(request: ModerateRequest):
-    """Проверить текст через ContentModerator (profanity + spam)."""
+    """Moderate text (profanity + spam)."""
     result = _moderator.moderate(request.text)
     return {
         "approved": result["approved"],
@@ -1606,17 +1623,17 @@ async def moderate_text(request: ModerateRequest):
 
 @app.post("/api/moderate/profanity")
 async def check_profanity(request: ModerateRequest):
-    """Проверить только мат (ProfanityFilter)."""
+    """Check profanity only."""
     return _moderator.profanity.check(request.text)
 
 @app.post("/api/moderate/spam")
 async def check_spam(request: ModerateRequest):
-    """Проверить только спам (SpamDetector)."""
+    """Check spam only."""
     result = _moderator.spam.is_spam(request.text)
     return {"is_spam": result, "text": request.text}
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"Запуск Анекдот в тему v3.13.0 на http://localhost:{port}")
+    print(t("console.starting", version="3.14.2", port=port))
     uvicorn.run(app, host="0.0.0.0", port=port)

@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Overlay — полупрозрачное всплывающее окно ПО ВЕРХ ВСЕХ ОКОН,
-показывающее шутки из бэкенда «Анекдот в тему».
+Overlay — a semi-transparent popup window ON TOP OF ALL WINDOWS,
+showing jokes from the «Анекдот в тему» backend.
 
-Запуск:
+Usage:
     python3 overlay.py
-    # или с указанием Python из venv:
+    # or with Python from venv:
     /app/venv/bin/python overlay.py
 
-Особенности:
-  • tkinter — без тяжёлых зависимостей (PyQt/GTK)
-  • always-on-top + полупрозрачность через wm_attributes
-  • Fade-in анимация при появлении новой шутки
-  • Автообновление каждые 15-20 секунд
-  • Кнопка ✕ для закрытия
-  • Маленькое окно в правом нижнем углу
+Features:
+  • tkinter — no heavy dependencies (PyQt/GTK)
+  • always-on-top + transparency via wm_attributes
+  • Fade-in animation when a new joke appears
+  • Auto-update every 15-20 seconds
+  • ✕ button to close
+  • Small window in the bottom-right corner
 """
 
 import tkinter as tk
@@ -28,48 +28,48 @@ import time
 import os
 
 # ============================================================
-# Настройки
+# Settings
 # ============================================================
 
-# URL бэкенда для случайной шутки
+# Backend URL for a random joke
 API_URL = os.environ.get("BASE_URL", "http://localhost:8000") + "/api/joke/random"
 
-# URL для контекстного подбора (если voice_monitor передал контекст)
+# URL for context-based matching (if voice_monitor provided context)
 API_CONTEXT_URL = os.environ.get("BASE_URL", "http://localhost:8000") + "/api/jokes/context"
 
-# Интервал обновления шутки (секунды) — случайно 15..20
+# Joke update interval (seconds) — random 15..20
 UPDATE_INTERVAL_MIN = 15
 UPDATE_INTERVAL_MAX = 20
 
-# Таймаут запроса к API (секунды)
+# API request timeout (seconds)
 API_TIMEOUT = 5
 
-# Размеры окна
+# Window dimensions
 WINDOW_WIDTH = 380
 WINDOW_HEIGHT = 180
 
-# Отступ от краёв экрана (правый нижний угол)
+# Margin from screen edges (bottom-right corner)
 MARGIN_RIGHT = 20
 MARGIN_BOTTOM = 60
 
-# Прозрачность фона (0.0 — полностью прозрачно, 1.0 — непрозрачно)
+# Background transparency (0.0 — fully transparent, 1.0 — opaque)
 ALPHA_TARGET = 0.88
 
-# Шаг fade-in анимации
+# Fade-in animation step
 FADE_STEP = 0.05
-FADE_DELAY_MS = 30  # миллисекунды между шагами
+FADE_DELAY_MS = 30  # milliseconds between steps
 
-# Шрифт для шутки
+# Joke font
 JOKE_FONT = ("Arial", 13, "bold")
 JOKE_FG = "#FFFFFF"
 
-# Цвета
+# Colors
 BG_COLOR = "#1E1E2E"
 CLOSE_BTN_FG = "#FF5555"
 CLOSE_BTN_BG = "#313244"
 BORDER_COLOR = "#45475A"
 
-# Настройка логирования
+# Logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -80,15 +80,15 @@ logger = logging.getLogger("overlay")
 
 
 # ============================================================
-# Функция загрузки шутки
+# Joke fetching function
 # ============================================================
 
 def fetch_joke() -> str:
     """
-    Получить шутку — сначала из voice_monitor (latest_joke.json),
-    если нет свежей — случайную с бэкенда.
+    Fetch a joke — first from voice_monitor (latest_joke.json),
+    if no fresh one is available — a random one from the backend.
     """
-    # 1. Проверяем есть ли свежая шутка от voice_monitor
+    # 1. Check if there is a fresh joke from voice_monitor
     try:
         bridge_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "latest_joke.json")
         if os.path.exists(bridge_path):
@@ -96,16 +96,16 @@ def fetch_joke() -> str:
                 bridge = json.load(f)
             ts = bridge.get("timestamp", 0)
             joke = bridge.get("joke", {})
-            # Если шутка свежая (< 30 сек) — берём её
+            # If the joke is fresh (< 30 sec) — use it
             if joke and (time.time() - ts) < 30:
                 text = joke.get("text", "").strip()
                 if text:
-                    logger.info("📍 Контекстная шутка от voice_monitor (cat=%s)", joke.get("category"))
+                    logger.info("📍 Contextual joke from voice_monitor (cat=%s)", joke.get("category"))
                     return text
     except Exception:
         pass
 
-    # 2. Fallback — случайная шутка с бэкенда
+    # 2. Fallback — random joke from the backend
     try:
         req = urllib.request.Request(
             API_URL,
@@ -115,86 +115,86 @@ def fetch_joke() -> str:
         with urllib.request.urlopen(req, timeout=API_TIMEOUT) as resp:
             data = json.loads(resp.read().decode("utf-8"))
 
-        # Бэкенд возвращает: {"id": ..., "text": ..., "category": ..., ...}
+        # Backend returns: {"id": ..., "text": ..., "category": ..., ...}
         if isinstance(data, dict) and "text" in data:
             joke_text = data["text"].strip()
             if joke_text:
-                logger.info("Получена шутка (id=%s, cat=%s)",
+                logger.info("Joke received (id=%s, cat=%s)",
                             data.get("id"), data.get("category"))
                 return joke_text
 
-        # Если пришел список (маловероятно, но обработаем)
+        # If a list was returned (unlikely, but handle it)
         if isinstance(data, list) and len(data) > 0:
             first = data[0]
             if isinstance(first, dict) and "text" in first:
                 return first["text"].strip()
 
-        logger.warning("Неожиданный формат ответа: %s", type(data))
-        return "Шутка загружается…"
+        logger.warning("Unexpected response format: %s", type(data))
+        return "Loading joke…"
 
     except urllib.error.URLError as e:
-        logger.warning("Сервер недоступен (%s): %s", API_URL, e)
-        return "⏳ Сервер не отвечает…"
+        logger.warning("Server unavailable (%s): %s", API_URL, e)
+        return "⏳ Server is not responding…"
     except Exception as e:
-        logger.error("Ошибка при получении шутки: %s", e)
-        return f"⚠️ Ошибка: {e}"
+        logger.error("Error fetching joke: %s", e)
+        return f"⚠️ Error: {e}"
 
 
 # ============================================================
-# Класс Overlay-окна
+# Overlay window class
 # ============================================================
 
 class JokeOverlay:
-    """Полупрозрачное overlay-окно для показа шуток."""
+    """Semi-transparent overlay window for displaying jokes."""
 
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Анекдот в тему")
-        self.root.withdraw()  # скрываем до завершения настройки
+        self.root.withdraw()  # hide until setup is complete
 
-        # Убираем рамку окна
+        # Remove window frame
         self.root.overrideredirect(True)
 
-        # Поверх всех окон
+        # On top of all windows
         self.root.attributes("-topmost", True)
 
-        # Начальная прозрачность = 0 (для fade-in)
+        # Initial transparency = 0 (for fade-in)
         self.root.attributes("-alpha", 0.0)
 
-        # Фон
+        # Background
         self.root.configure(bg=BG_COLOR)
 
-        # Позиция — правый нижний угол
+        # Position — bottom-right corner
         self._position_window()
 
-        # Отслеживаем изменение размера экрана
+        # Track screen size changes
         self.root.bind("<Configure>", self._on_configure)
 
-        # Создаём виджеты
+        # Create widgets
         self._create_widgets()
 
-        # Drag-and-drop — перетаскивание окна за заголовок
+        # Drag-and-drop — drag the window by the header
         self._drag_data = {"x": 0, "y": 0}
         self.header_frame.bind("<ButtonPress-1>", self._drag_start)
         self.header_frame.bind("<B1-Motion>", self._drag_move)
 
-        # Показываем окно
+        # Show the window
         self.root.deiconify()
         self.root.update_idletasks()
 
-        # Первая шутка
+        # First joke
         self.current_joke = ""
         self._load_and_show_joke()
 
-        # Пытаемся периодически поднимать окно наверх
+        # Try to periodically raise the window to the top
         self._keep_on_top()
 
     # ----------------------------------------------------------
-    # Позиционирование
+    # Positioning
     # ----------------------------------------------------------
 
     def _position_window(self):
-        """Разместить окно в правом нижнем углу экрана."""
+        """Place the window in the bottom-right corner of the screen."""
         self.root.update_idletasks()
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
@@ -203,29 +203,29 @@ class JokeOverlay:
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{x}+{y}")
 
     def _on_configure(self, event):
-        """Переразмещение при изменении экрана."""
-        pass  # позиция фиксирована при старте
+        """Reposition on screen change."""
+        pass  # position is fixed at startup
 
     # ----------------------------------------------------------
-    # Виджеты
+    # Widgets
     # ----------------------------------------------------------
 
     def _create_widgets(self):
-        """Создать все виджеты overlay-окна."""
+        """Create all overlay window widgets."""
 
-        # Рамка-контейнер с бордером
+        # Border container frame
         self.outer_frame = tk.Frame(
             self.root, bg=BORDER_COLOR, padx=2, pady=2
         )
         self.outer_frame.pack(fill="both", expand=True)
 
-        # Внутренний контейнер
+        # Inner container
         self.inner_frame = tk.Frame(
             self.outer_frame, bg=BG_COLOR
         )
         self.inner_frame.pack(fill="both", expand=True)
 
-        # Шапка: заголовок + кнопка закрытия
+        # Header: title + close button
         self.header_frame = tk.Frame(self.inner_frame, bg=BG_COLOR)
         self.header_frame.pack(fill="x", padx=(8, 4), pady=(6, 2))
 
@@ -239,7 +239,7 @@ class JokeOverlay:
         )
         self.title_label.pack(side="left")
 
-        # Кнопка «✕» закрытия
+        # Close button "✕"
         self.close_btn = tk.Label(
             self.header_frame,
             text=" ✕ ",
@@ -253,10 +253,10 @@ class JokeOverlay:
         self.close_btn.bind("<Leave>", lambda e: self.close_btn.config(bg=CLOSE_BTN_BG))
         self.close_btn.bind("<ButtonPress-1>", lambda e: self._close())
 
-        # Текст шутки (основной контент)
+        # Joke text (main content)
         self.joke_label = tk.Label(
             self.inner_frame,
-            text="Загрузка шутки…",
+            text="Loading joke…",
             font=JOKE_FONT,
             fg=JOKE_FG,
             bg=BG_COLOR,
@@ -269,7 +269,7 @@ class JokeOverlay:
         )
 
     # ----------------------------------------------------------
-    # Drag-and-drop (перетаскивание окна)
+    # Drag-and-drop (window dragging)
     # ----------------------------------------------------------
 
     def _drag_start(self, event):
@@ -284,37 +284,37 @@ class JokeOverlay:
         self.root.geometry(f"+{x}+{y}")
 
     # ----------------------------------------------------------
-    # Анимация fade-in
+    # Fade-in animation
     # ----------------------------------------------------------
 
     def _fade_in(self, current_alpha: float = 0.0):
-        """Плавное появление окна (fade in)."""
+        """Smooth window appearance (fade in)."""
         if current_alpha < ALPHA_TARGET:
             current_alpha = min(current_alpha + FADE_STEP, ALPHA_TARGET)
             self.root.attributes("-alpha", current_alpha)
             self.root.after(FADE_DELAY_MS, lambda: self._fade_in(current_alpha))
 
     def _fade_out_and_update(self):
-        """Плавное исчезновение → обновление шутки → появление."""
+        """Smooth disappearance → update joke → appearance."""
         current = self.root.attributes("-alpha")
         if current and float(current) > 0.02:
             new_alpha = float(current) - FADE_STEP
             self.root.attributes("-alpha", max(new_alpha, 0.0))
             self.root.after(FADE_DELAY_MS, self._fade_out_and_update)
         else:
-            # Обновляем текст
+            # Update the text
             self.joke_label.config(text=self.current_joke)
             self._fade_in(0.0)
 
     # ----------------------------------------------------------
-    # Загрузка и отображение шутки
+    # Loading and displaying the joke
     # ----------------------------------------------------------
 
     def _load_and_show_joke(self):
-        """Загрузить шутку и показать с fade-in анимацией."""
+        """Load a joke and show it with fade-in animation."""
         self.current_joke = fetch_joke()
 
-        # Если окно уже видимо — fade out, потом обновим
+        # If the window is already visible — fade out, then update
         current_alpha = float(self.root.attributes("-alpha"))
         if current_alpha > 0.1:
             self._fade_out_and_update()
@@ -322,42 +322,42 @@ class JokeOverlay:
             self.joke_label.config(text=self.current_joke)
             self._fade_in(0.0)
 
-        # Планируем следующее обновление
+        # Schedule the next update
         next_interval = random.randint(UPDATE_INTERVAL_MIN, UPDATE_INTERVAL_MAX) * 1000
         self.root.after(next_interval, self._load_and_show_joke)
 
     # ----------------------------------------------------------
-    # Keep on top (периодический подъём окна)
+    # Keep on top (periodic window raise)
     # ----------------------------------------------------------
 
     def _keep_on_top(self):
-        """Периодически поднимать окно наверх (каждые 5 секунд)."""
+        """Periodically raise the window to the top (every 5 seconds)."""
         try:
             self.root.lift()
             self.root.attributes("-topmost", True)
         except tk.TclError:
-            return  # окно уже закрыто
+            return  # window already closed
         self.root.after(5000, self._keep_on_top)
 
     # ----------------------------------------------------------
-    # Закрытие
+    # Closing
     # ----------------------------------------------------------
 
     def _close(self):
-        """Закрыть overlay."""
-        logger.info("Закрытие overlay по запросу пользователя")
+        """Close the overlay."""
+        logger.info("Closing overlay at user request")
         try:
             self.root.destroy()
         except tk.TclError:
             pass
 
     # ----------------------------------------------------------
-    # Запуск
+    # Run
     # ----------------------------------------------------------
 
     def run(self):
-        """Запустить главный цикл Tk."""
-        logger.info("Overlay запущен (tkinter, always-on-top)")
+        """Start the Tk main loop."""
+        logger.info("Overlay started (tkinter, always-on-top)")
         try:
             self.root.mainloop()
         except KeyboardInterrupt:
@@ -365,7 +365,7 @@ class JokeOverlay:
 
 
 # ============================================================
-# Точка входа
+# Entry point
 # ============================================================
 
 if __name__ == "__main__":

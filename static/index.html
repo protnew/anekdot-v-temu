@@ -1,834 +1,461 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>😂 Анекдот в тему — AI шутки по контексту</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        :root {
-            --bg: #0f0f1a;
-            --card: #1a1a2e;
-            --card-hover: #222240;
-            --accent: #e94560;
-            --accent2: #0f3460;
-            --accent3: #533483;
-            --text: #eee;
-            --text2: #aaa;
-            --success: #4caf50;
-            --warning: #ff9800;
-            --radius: 16px;
-        }
-        
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-        }
-        
-        /* Header */
-        .header {
-            background: linear-gradient(135deg, var(--accent2), var(--accent3), var(--accent));
-            padding: 24px 20px;
-            text-align: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        .header h1 { font-size: 28px; margin-bottom: 6px; }
-        .header p { color: #ccc; font-size: 14px; }
-        .stats-bar {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
-        .stat-item {
-            background: rgba(255,255,255,0.1);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-        }
-        .stat-item span { font-weight: bold; color: var(--accent); }
-        .stat-item.llm-on span { color: var(--success); }
-        .stat-item.llm-off span { color: var(--warning); }
-        
-        /* Navigation Tabs */
-        .tabs {
-            display: flex;
-            background: var(--card);
-            padding: 0;
-            border-bottom: 2px solid var(--accent2);
-        }
-        .tab {
-            flex: 1;
-            padding: 14px 10px;
-            text-align: center;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s;
-            border-bottom: 3px solid transparent;
-        }
-        .tab:hover { background: var(--card-hover); }
-        .tab.active {
-            color: var(--accent);
-            border-bottom-color: var(--accent);
-            background: rgba(233,69,96,0.1);
-        }
-        
-        /* Main Content */
-        .container { max-width: 700px; margin: 0 auto; padding: 20px 16px; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        
-        /* Context Input */
-        .context-section {
-            background: linear-gradient(135deg, var(--accent2), var(--accent3));
-            border-radius: var(--radius);
-            padding: 24px;
-            margin-bottom: 20px;
-        }
-        .context-section h2 { margin-bottom: 12px; font-size: 20px; }
-        .context-section p { color: #bbb; margin-bottom: 16px; font-size: 14px; }
-        
-        textarea {
-            width: 100%;
-            min-height: 100px;
-            background: rgba(0,0,0,0.3);
-            border: 2px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 14px;
-            color: var(--text);
-            font-size: 15px;
-            resize: vertical;
-            font-family: inherit;
-        }
-        textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 15px rgba(233,69,96,0.3);
-        }
-        textarea::placeholder { color: #666; }
-        
-        .btn-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 14px;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .btn:active { transform: scale(0.97); }
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-        }
-        .btn-primary:hover { background: #c93050; box-shadow: 0 4px 15px rgba(233,69,96,0.4); }
-        .btn-secondary {
-            background: rgba(255,255,255,0.1);
-            color: var(--text);
-        }
-        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
-        .btn-sm { padding: 8px 16px; font-size: 13px; }
-        
-        /* Joke Cards */
-        .joke-card {
-            background: var(--card);
-            border-radius: var(--radius);
-            padding: 20px;
-            margin-bottom: 14px;
-            border-left: 4px solid var(--accent);
-            transition: all 0.3s;
-            animation: fadeIn 0.4s ease;
-        }
-        .joke-card:hover {
-            background: var(--card-hover);
-            transform: translateX(4px);
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .joke-text {
-            font-size: 16px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            margin-bottom: 14px;
-        }
-        
-        .joke-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        
-        .joke-category {
-            background: var(--accent2);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            text-transform: capitalize;
-        }
-        
-        .joke-tags {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-        .joke-tag {
-            background: rgba(255,255,255,0.05);
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            color: var(--text2);
-        }
-        
-        .joke-rating {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 14px;
-        }
-        .star { cursor: pointer; font-size: 18px; }
-        .star:hover { transform: scale(1.3); }
-        .star.active { color: #ffd700; }
-        
-        .joke-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .joke-action-btn {
-            background: rgba(255,255,255,0.05);
-            border: none;
-            padding: 6px 12px;
-            border-radius: 8px;
-            color: var(--text2);
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
-        .joke-action-btn:hover { background: rgba(255,255,255,0.15); color: var(--text); }
-        .joke-action-btn.fav-active { color: var(--accent); background: rgba(233,69,96,0.15); }
-        
-        /* Categories Grid */
-        .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 12px;
-        }
-        .category-card {
-            background: var(--card);
-            border-radius: var(--radius);
-            padding: 16px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-        }
-        .category-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-        }
-        .category-card .emoji { font-size: 32px; margin-bottom: 8px; }
-        .category-card .name { font-weight: 600; margin-bottom: 4px; }
-        .category-card .count { font-size: 12px; color: var(--text2); }
-        
-        /* Matched categories indicator */
-        .matched-cats {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin: 14px 0;
-        }
-        .matched-cat {
-            background: rgba(233,69,96,0.2);
-            border: 1px solid var(--accent);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 13px;
-            color: var(--accent);
-        }
-        
-        /* Search */
-        .search-box {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .search-box input {
-            flex: 1;
-            padding: 12px 16px;
-            background: rgba(0,0,0,0.3);
-            border: 2px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            color: var(--text);
-            font-size: 15px;
-        }
-        .search-box input:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-        
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: var(--text2);
-        }
-        .spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255,255,255,0.1);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text2);
-        }
-        .empty-state .emoji { font-size: 64px; margin-bottom: 16px; }
-        
-        /* Toast notifications */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: var(--accent);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 14px;
-            transition: transform 0.3s;
-            z-index: 1000;
-        }
-        .toast.show { transform: translateX(-50%) translateY(0); }
-        
-        /* Quick topics */
-        .quick-topics {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 12px;
-        }
-        .quick-topic {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .quick-topic:hover {
-            background: rgba(233,69,96,0.2);
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-        
-        /* Mobile responsive */
-        @media (max-width: 600px) {
-            .header h1 { font-size: 22px; }
-            .container { padding: 14px 10px; }
-            .joke-card { padding: 14px; }
-            .categories-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-            .btn-row { flex-direction: column; }
-            .btn { width: 100%; }
-        }
-    </style>
-    <link rel="manifest" href="/manifest.json">
-    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joke in Context</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/static/favicon.ico">
+<style>
+:root{--bg:#060a13;--bg2:#0c1220;--card:#0f172a;--card2:#162033;--brd:#1e293b;--txt:#e2e8f0;--dim:#94a3b8;--mut:#64748b;--acc:#00d4ff;--pur:#8b5cf6;--grn:#22c55e;--red:#ef4444;--org:#f59e0b;--gld:#fbbf24;--rad:12px;--fnt:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--mon:'SF Mono',monospace;--shd:0 4px 24px rgba(0,0,0,.4);--tts:#1a1040}
+[data-theme="light"]{--bg:#f1f5f9;--bg2:#e2e8f0;--card:#fff;--card2:#f8fafc;--brd:#cbd5e1;--txt:#0f172a;--dim:#475569;--mut:#94a3b8;--acc:#0284c7;--pur:#7c3aed;--grn:#16a34a;--red:#dc2626;--org:#d97706;--gld:#d97706;--shd:0 4px 24px rgba(0,0,0,.08);--tts:#ede9fe}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--fnt);background:var(--bg);color:var(--txt);min-height:100vh;transition:background .3s,color .3s}
+a{color:var(--acc)}
+.hd{background:var(--card);border-bottom:1px solid var(--brd);padding:14px 20px;position:sticky;top:0;z-index:100}
+.hd-in{max-width:800px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-i{font-size:26px}
+.logo-t{font-size:18px;font-weight:700;letter-spacing:-.5px}
+.logo-s{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1.5px}
+.hd-c{display:flex;align-items:center;gap:6px}
+.hb{background:var(--card2);border:1px solid var(--brd);color:var(--dim);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .2s}
+.hb:hover{color:var(--txt);border-color:var(--acc)}
+select.ls{background:var(--card2);border:1px solid var(--brd);color:var(--txt);padding:5px 6px;border-radius:8px;font-size:13px}
+.ss{background:var(--bg2);border-bottom:1px solid var(--brd);display:flex;justify-content:center;gap:1px;flex-wrap:wrap}
+.sc{background:var(--card);padding:8px 14px;text-align:center;min-width:75px}
+.sv{font-size:16px;font-weight:700;color:var(--acc);font-family:var(--mon)}
+.sl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin-top:1px}
+.tabs{display:flex;background:var(--card);border-bottom:2px solid var(--brd);max-width:800px;margin:0 auto}
+.tab{flex:1;padding:11px 6px;text-align:center;cursor:pointer;font-size:12px;font-weight:500;color:var(--dim);transition:all .2s;border-bottom:3px solid transparent;user-select:none}
+.tab:hover{color:var(--txt);background:var(--card2)}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc);background:rgba(0,212,255,.05)}
+.mn{max-width:800px;margin:0 auto;padding:18px 14px}
+.tc{display:none}.tc.active{display:block}
+.cb{background:linear-gradient(135deg,rgba(0,212,255,.08),rgba(139,92,246,.08));border:1px solid var(--brd);border-radius:var(--rad);padding:20px;margin-bottom:16px}
+.cb h2{font-size:17px;margin-bottom:4px}
+.cb p{color:var(--dim);font-size:13px;margin-bottom:12px}
+textarea{width:100%;min-height:70px;background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:10px;color:var(--txt);font-size:14px;resize:vertical;font-family:var(--fnt)}
+textarea:focus{outline:none;border-color:var(--acc)}
+textarea::placeholder{color:var(--mut)}
+.qt{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.qti{background:var(--card);border:1px solid var(--brd);padding:4px 10px;border-radius:16px;font-size:11px;cursor:pointer;color:var(--dim);transition:all .2s}
+.qti:hover{border-color:var(--acc);color:var(--acc)}
+.br{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.btn{padding:9px 16px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.btn:active{transform:scale(.97)}
+.ba{background:var(--acc);color:#000}.ba:hover{box-shadow:0 0 16px rgba(0,212,255,.3)}
+.bp{background:var(--pur);color:#fff}
+.bg{background:var(--card);border:1px solid var(--brd);color:var(--dim)}.bg:hover{color:var(--txt);border-color:var(--acc)}
+.bs{padding:5px 10px;font-size:11px}
+.jc{background:var(--card);border:1px solid var(--brd);border-radius:var(--rad);padding:16px;margin-bottom:10px;border-left:3px solid var(--acc);animation:fi .3s ease}
+.jc:hover{background:var(--card2)}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.jt{font-size:14px;line-height:1.6;white-space:pre-wrap;margin-bottom:10px}
+.jm{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.jcat{background:rgba(0,212,255,.1);color:var(--acc);padding:2px 8px;border-radius:16px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.jb{display:flex;gap:4px;flex-wrap:wrap}
+.bd{padding:2px 6px;border-radius:8px;font-size:9px;font-weight:600}
+.bdc{background:rgba(0,212,255,.1);color:var(--acc)}
+.bds{background:rgba(139,92,246,.15);color:var(--pur)}
+.bdg{background:rgba(233,69,96,.15);color:var(--red)}
+.rr{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.rl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;min-width:65px}
+.sts{display:flex;gap:1px}
+.st{cursor:pointer;font-size:15px;transition:transform .1s;user-select:none}
+.st:hover{transform:scale(1.3)}
+.st.on{color:var(--gld)}.st.off{color:var(--mut);opacity:.4}
+.rv{font-size:11px;color:var(--dim);font-family:var(--mon)}
+.ja{display:flex;gap:5px;flex-wrap:wrap}
+.ab{background:var(--card2);border:1px solid var(--brd);padding:4px 8px;border-radius:7px;color:var(--dim);cursor:pointer;font-size:11px;transition:all .2s;display:inline-flex;align-items:center;gap:3px}
+.ab:hover{color:var(--txt);border-color:var(--acc)}
+.ab.fo{color:var(--red);border-color:var(--red);background:rgba(239,68,68,.1)}
+.ab.pl{color:var(--acc);border-color:var(--acc);background:rgba(0,212,255,.1)}
+.tp{position:fixed;bottom:0;left:0;right:0;background:var(--tts);border-top:1px solid var(--brd);padding:8px 16px;display:none;z-index:200;backdrop-filter:blur(8px);align-items:center;justify-content:center;gap:10px}
+.tp.sh{display:flex}
+.tp .tt{flex:1;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:450px}
+.tp .tx{cursor:pointer;color:var(--mut);font-size:16px}
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.cc{background:var(--card);border:1px solid var(--brd);border-radius:var(--rad);padding:12px;text-align:center;cursor:pointer;transition:all .2s}
+.cc:hover{border-color:var(--acc);transform:translateY(-2px);box-shadow:var(--shd)}
+.cc .ce{font-size:24px;margin-bottom:4px}
+.cc .cn{font-weight:600;font-size:12px;margin-bottom:2px}
+.cc .ct{font-size:10px;color:var(--mut);font-family:var(--mon)}
+.sr{display:flex;gap:6px;margin-bottom:14px}
+.sr input{flex:1;padding:9px 12px;background:var(--bg);border:1px solid var(--brd);border-radius:10px;color:var(--txt);font-size:13px}
+.sr input:focus{outline:none;border-color:var(--acc)}
+.mt{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}
+.mti{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);padding:2px 8px;border-radius:16px;font-size:11px;color:var(--acc)}
+.ld{text-align:center;padding:30px;color:var(--mut)}
+.sp{display:inline-block;width:28px;height:28px;border:3px solid var(--brd);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.em{text-align:center;padding:40px 16px;color:var(--mut)}
+.em .ei{font-size:40px;margin-bottom:10px}
+.toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--card);border:1px solid var(--brd);color:var(--txt);padding:8px 16px;border-radius:10px;font-size:12px;transition:transform .3s;z-index:300;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.ft{text-align:center;padding:16px;font-size:10px;color:var(--mut);border-top:1px solid var(--brd);margin-top:24px}
+@media(max-width:600px){.hd-in{flex-direction:column;align-items:flex-start}.mn{padding:12px 8px}.jc{padding:12px}.cg{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}.br{flex-direction:column}.btn{width:100%;justify-content:center}.sc{min-width:55px;padding:6px 4px}.sv{font-size:13px}}
+</style>
 </head>
-<body>
-<div class="container">
-    <div id="offlineBanner" style="display:none;background:#e94560;color:#fff;padding:10px;border-radius:8px;margin-bottom:12px;text-align:center">
-        ⚠️ Сервер недоступен. Проверьте подключение.
-    </div>
-    <div class="header">
-        <h1>🎭 Анекдот в Тему</h1>
-    <p>AI-помощник для шуток по контексту — просто опишите ситуацию</p>
-    <div class="stats-bar" id="statsBar">
-        <div class="stat-item">📚 <span id="statJokes">0</span> анекдотов</div>
-        <div class="stat-item">📂 <span id="statCats">0</span> категорий</div>
-        <div class="stat-item">⭐ <span id="statRating">0</span> ср. рейтинг</div>
-        <div class="stat-item">❤️ <span id="statFavs">0</span> избранное</div>
-        <div class="stat-item">🔍 <span id="statVocab">0</span> слов в индексе</div>
-        <div class="stat-item" id="llmStatus">🤖 LLM: <span>проверка...</span></div>
-    </div>
-</div>
+<body data-theme="dark">
 
-<div class="tabs">
-    <div class="tab active" data-tab="context">🎯 В тему</div>
-    <div class="tab" data-tab="categories">📂 Категории</div>
-    <div class="tab" data-tab="random">🎲 Случайный</div>
-    <div class="tab" data-tab="favorites">❤️ Избранное</div>
-    <div class="tab" data-tab="search">🔍 Поиск</div>
+<div class="hd"><div class="hd-in">
+<div class="logo"><span class="logo-i">🎭</span><div><div class="logo-t" data-i18n="title">Joke in Context</div><div class="logo-s" data-i18n="sub">AI CONTEXTUAL JOKES</div></div></div>
+<div class="hd-c">
+<select class="ls" id="langSel" onchange="setLang(this.value)">
+<option value="en">EN</option><option value="ru">RU</option><option value="es">ES</option>
+<option value="de">DE</option><option value="fr">FR</option><option value="pt">PT</option><option value="zh">ZH</option>
+</select>
+<button class="hb" id="thBtn" onclick="togTheme()">☾</button>
+</div></div></div>
+<div class="ss">
+<div class="sc"><div class="sv" id="sJ">-</div><div class="sl" data-i18n="s_jokes">Jokes</div></div>
+<div class="sc"><div class="sv" id="sC">-</div><div class="sl" data-i18n="s_cats">Categories</div></div>
+<div class="sc"><div class="sv" id="sR">-</div><div class="sl" data-i18n="s_avg">Avg Rating</div></div>
+<div class="sc"><div class="sv" id="sF">-</div><div class="sl" data-i18n="s_favs">Favorites</div></div>
+<div class="sc"><div class="sv" id="sL">-</div><div class="sl">LLM</div></div>
 </div>
-
-<div class="container">
-    <!-- Tab: Context -->
-    <div class="tab-content active" id="tab-context">
-        <div class="context-section">
-            <h2>🎯 Расскажите ситуацию</h2>
-            <p>Опишите контекст разговора, тему или ситуацию — мы подберём анекдот точно в тему!</p>
-            <textarea id="contextInput" placeholder="Например: сижу на совещании, начальник опять нёс чушь про дедлайны..."></textarea>
-            <div class="quick-topics">
-                <span class="quick-topic" onclick="setContext('работа начальник офис')">💼 Работа</span>
-                <span class="quick-topic" onclick="setContext('программист код баг')">💻 IT</span>
-                <span class="quick-topic" onclick="setContext('семья жена дети дом')">👨‍👩‍👧 Семья</span>
-                <span class="quick-topic" onclick="setContext('деньги зарплата кредит')">💰 Деньги</span>
-                <span class="quick-topic" onclick="setContext('любовь отношения свидание')">💑 Отношения</span>
-                <span class="quick-topic" onclick="setContext('здоровье врач диета')">🏥 Здоровье</span>
-                <span class="quick-topic" onclick="setContext('chatgpt нейросеть искусственный интеллект')">🤖 AI</span>
-                <span class="quick-topic" onclick="setContext('кот кошка мяу')">🐱 Котики</span>
-            </div>
-            <div class="btn-row">
-                <button class="btn btn-primary" onclick="findJoke()">😂 Анекдот в тему!</button>
-                <button class="btn btn-secondary" onclick="generateJoke()">🤖 AI-генерация</button>
-            </div>
-        </div>
-        <div id="matchedCategories" class="matched-cats" style="display:none"></div>
-        <div id="contextResults"></div>
-    </div>
-    
-    <!-- Tab: Categories -->
-    <div class="tab-content" id="tab-categories">
-        <h2 style="margin-bottom:16px">📂 Категории анекдотов</h2>
-        <div class="categories-grid" id="categoriesGrid"></div>
-        <div id="categoryJokes" style="margin-top:20px"></div>
-    </div>
-    
-    <!-- Tab: Random -->
-    <div class="tab-content" id="tab-random">
-        <div style="text-align:center; margin: 30px 0">
-            <button class="btn btn-primary" onclick="randomJoke()" style="font-size:18px; padding:16px 40px">
-                🎲 Хочу случайный анекдот!
-            </button>
-        </div>
-        <div id="randomResults"></div>
-    </div>
-    
-    <!-- Tab: Favorites -->
-    <div class="tab-content" id="tab-favorites">
-        <h2 style="margin-bottom:16px">❤️ Избранные анекдоты</h2>
-        <div id="favoritesList"></div>
-    </div>
-    
-    <!-- Tab: Search -->
-    <div class="tab-content" id="tab-search">
-        <h2 style="margin-bottom:16px">🔍 Поиск анекдотов</h2>
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Введите слово или фразу..." onkeypress="if(event.key==='Enter') searchJokes()">
-            <button class="btn btn-primary" onclick="searchJokes()">Найти</button>
-        </div>
-        <div id="searchResults"></div>
-    </div>
+<div class="tabs" role="tablist">
+<div class="tab active" data-tab="context" role="tab" tabindex="0" aria-selected="true" data-i18n="t_ctx">🎯 In Context</div>
+<div class="tab" data-tab="cats" role="tab" tabindex="0" aria-selected="false" data-i18n="t_cat">📂 Categories</div>
+<div class="tab" data-tab="rand" role="tab" tabindex="0" aria-selected="false" data-i18n="t_rnd">🎲 Random</div>
+<div class="tab" data-tab="favs" role="tab" tabindex="0" aria-selected="false" data-i18n="t_fav">❤️ Favorites</div>
+<div class="tab" data-tab="srch" role="tab" tabindex="0" aria-selected="false" data-i18n="t_srch">🔍 Search</div>
 </div>
-
+<div class="mn">
+<div id="offB" style="display:none;background:var(--red);color:#fff;padding:8px;border-radius:8px;margin-bottom:10px;text-align:center" data-i18n="offline">Server unavailable</div>
+<div class="tc active" id="tab-context">
+<div class="cb">
+<h2>🎯 <span data-i18n="ctx_t">Describe the Situation</span></h2>
+<p data-i18n="ctx_d">Describe the context and we'll find the perfect joke!</p>
+<textarea id="ctxIn" data-i18n-ph="ctx_ph" placeholder="For example: sitting in a meeting, the boss talks nonsense about deadlines..."></textarea>
+<div class="qt" id="qTags"></div>
+<div class="br">
+<button class="btn ba" onclick="findJoke()">😂 <span data-i18n="b_find">Find Joke!</span></button>
+<button class="btn bp" onclick="genJoke()">🤖 <span data-i18n="b_gen">AI Generate</span></button>
+</div></div>
+<div id="mCats" class="mt" style="display:none"></div>
+<div id="ctxR"></div>
+</div>
+<div class="tc" id="tab-cats">
+<h2 style="margin-bottom:12px">📂 <span data-i18n="cat_t">Joke Categories</span></h2>
+<div class="cg" id="catG"></div>
+<div id="catJ" style="margin-top:14px"></div>
+</div>
+<div class="tc" id="tab-rand">
+<div style="text-align:center;margin:24px 0">
+<button class="btn ba" onclick="randJoke()" style="font-size:15px;padding:12px 32px">🎲 <span data-i18n="b_rnd">Random joke!</span></button>
+</div><div id="rndR"></div>
+</div>
+<div class="tc" id="tab-favs">
+<h2 style="margin-bottom:12px">❤️ <span data-i18n="fav_t">Favorite Jokes</span></h2>
+<div id="favL"></div>
+</div>
+<div class="tc" id="tab-srch">
+<h2 style="margin-bottom:12px">🔍 <span data-i18n="srch_t">Search Jokes</span></h2>
+<div class="sr">
+<input type="text" id="srchIn" data-i18n-ph="srch_ph" placeholder="Enter a word or phrase..." onkeydown="if(event.key==='Enter')doSearch()">
+<button class="btn ba" onclick="doSearch()" data-i18n="b_srch">Search</button>
+</div><div id="srchR"></div>
+</div></div>
+<div class="tp" id="ttsP"><span>🔊</span><span class="tt" id="ttsT"></span><button class="btn bs bg" onclick="stopTTS()">■ <span data-i18n="b_stop">Stop</span></button><span class="tx" onclick="stopTTS()">×</span></div>
 <div class="toast" id="toast"></div>
-
+<div class="ft"><span data-i18n="title">Joke in Context</span> v3.15.0 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
 <script>
-const API = '';  // Same origin
-
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-// Category emojis
-const CAT_EMOJIS = {
-    'работа': '💼', 'айти': '💻', 'деньги': '💰', 'семья': '👨‍👩‍👧',
-    'политика': '🏛️', 'здоровье': '🏥', 'путешествия': '✈️', 'еда': '🍽️',
-    'наука': '🔬', 'спорт': '⚽', 'образование': '🎓', 'отношения': '💑',
-    'коронавирус': '😷', 'искусственный интеллект': '🤖', 'друзья': '🤝', 
-    'котики': '🐱', 'авто': '🚗', 'магазины': '🛒', 'дети': '👶', 'реклама': '📢',
-    // English
-    'en_misc': '😂', 'en_family': '👨‍👩‍👧', 'en_work': '💼', 'en_science': '🔬',
-    'en_animals': '🐾', 'en_food': '🍽️', 'en_sports': '⚽', 'en_crime': '🔫',
-    'en_medical': '🏥', 'en_music': '🎵', 'en_technology': '💻', 'en_political': '🏛️',
-    'en_religion': '⛪', 'en_bar': '🍺', 'en_relationship': '💑', 'en_professions': '👷',
-    // Other languages
-    'es_misc': '🇪🇸', 'de_misc': '🇩🇪', 'fr_misc': '🇫🇷', 'pt_misc': '🇧🇷',
-    'zh_misc': '🇨🇳', 'ja_misc': '🇯🇵', 'hi_misc': '🇮🇳', 'ar_misc': '🇸🇦'
+const I18N={
+en:{title:"Joke in Context",sub:"AI CONTEXTUAL JOKES",s_jokes:"Jokes",s_cats:"Categories",s_avg:"Avg Rating",s_favs:"Favorites",
+t_ctx:"🎯 In Context",t_cat:"📂 Categories",t_rnd:"🎲 Random",t_fav:"❤️ Favorites",t_srch:"🔍 Search",
+ctx_t:"Describe the Situation",ctx_d:"Describe the context and we will find the perfect joke!",
+ctx_ph:"For example: sitting in a meeting, the boss talks nonsense...",
+b_find:"Find Joke!",b_gen:"AI Generate",b_rnd:"Random joke!",b_srch:"Search",b_stop:"Stop",
+cat_t:"Joke Categories",fav_t:"Favorite Jokes",srch_t:"Search Jokes",srch_ph:"Enter a word or phrase...",
+offline:"Server unavailable",loading:"Finding a joke...",generating:"Generating AI joke...",
+no_res:"Nothing found",no_fav:"No favorites yet. Click the heart!",
+copied:"Copied!",playing:"Playing...",err_tts:"TTS error",
+j_count:"jokes",topics:"Topics:",found:"Found:",describe:"Describe a situation!",
+fun:"Funniness",off:"Offensiveness",clean:"Clean",
+fav_a:"Favorite",fav_r:"Favorited",
+q_work:"Work",q_it:"IT",q_fam:"Family",q_mon:"Money",q_love:"Love",q_hp:"Health",q_ai:"AI",q_cat:"Cats"},
+ru:{title:"Анекдот в Тему",sub:"AI ШУТКИ",
+s_jokes:"Анекдотов",s_cats:"Категорий",s_avg:"Ср. рейтинг",s_favs:"Избранное",
+t_ctx:"🎯 В тему",t_cat:"📂 Категории",t_rnd:"🎲 Случайный",t_fav:"❤️ Избранное",t_srch:"🔍 Поиск",
+ctx_t:"Опишите ситуацию",ctx_d:"Опишите контекст — подберём анекдот точно в тему!",
+ctx_ph:"Например: сижу на совещании, начальник опять несёт чушь...",
+b_find:"Анекдот в тему!",b_gen:"AI-генерация",b_rnd:"Случайный!",b_srch:"Найти",b_stop:"Стоп",
+cat_t:"Категории",fav_t:"Избранные",srch_t:"Поиск",srch_ph:"Введите слово...",
+offline:"Сервер недоступен",loading:"Подбираю...",generating:"Генерирую...",
+no_res:"Ничего не найдено",no_fav:"Пока нет избранных.",
+copied:"Скопировано!",playing:"Воспроизвожу...",err_tts:"Ошибка TTS",
+j_count:"анекдотов",topics:"Темы:",found:"Найдено:",
+describe:"Опишите ситуацию!",fun:"Смешность",off:"Обидность",clean:"Чистый",
+fav_a:"В избранное",fav_r:"В избранном",
+q_work:"Работа",q_it:"IT",q_fam:"Семья",q_mon:"Деньги",q_love:"Отношения",q_hp:"Здоровье",q_ai:"Нейросети",q_cat:"Котики"},
+es:{title:"Chiste en Contexto",sub:"CHISTES IA",s_jokes:"Chistes",s_cats:"Categorias",s_avg:"Media",s_favs:"Favoritos",
+t_ctx:"En contexto",t_cat:"Categorias",t_rnd:"Aleatorio",t_fav:"Favoritos",t_srch:"Buscar",
+ctx_t:"Describe la situacion",ctx_d:"Describe el contexto y encontraremos el chiste perfecto!",
+ctx_ph:"Por ejemplo: en una reunion, el jefe habla tonterias...",
+b_find:"Buscar chiste!",b_gen:"Generar IA",b_rnd:"Aleatorio!",b_srch:"Buscar",b_stop:"Parar",
+cat_t:"Categorias",fav_t:"Favoritos",srch_t:"Buscar",srch_ph:"Palabra o frase...",
+offline:"Servidor no disponible",loading:"Buscando...",generating:"Generando...",
+no_res:"Nada encontrado",no_fav:"Sin favoritos",copied:"Copiado!",playing:"Reproduciendo...",
+err_tts:"Error TTS",j_count:"chistes",topics:"Temas:",found:"Encontrados:",
+describe:"Describe una situacion!",fun:"Gracia",off:"Ofensivo",clean:"Limpio",
+fav_a:"Favorito",fav_r:"En favoritos",
+q_work:"Trabajo",q_it:"IT",q_fam:"Familia",q_mon:"Dinero",q_love:"Amor",q_hp:"Salud",q_ai:"IA",q_cat:"Gatos"},
+de:{title:"Witz im Kontext",sub:"KI WITZE",s_jokes:"Witze",s_cats:"Kategorien",s_avg:"Durchschnitt",s_favs:"Favoriten",
+t_ctx:"Im Kontext",t_cat:"Kategorien",t_rnd:"Zufall",t_fav:"Favoriten",t_srch:"Suche",
+ctx_t:"Beschreibe die Situation",ctx_d:"Beschreibe den Kontext und wir finden den perfekten Witz!",
+ctx_ph:"Zum Beispiel: in einer Besprechung, der Chef redet Unsinn...",
+b_find:"Witz finden!",b_gen:"KI generieren",b_rnd:"Zufallswitz!",b_srch:"Suchen",b_stop:"Stopp",
+cat_t:"Kategorien",fav_t:"Favoriten",srch_t:"Suchen",srch_ph:"Wort eingeben...",
+offline:"Server nicht erreichbar",loading:"Suche...",generating:"Generiere...",
+no_res:"Nichts gefunden",no_fav:"Keine Favoriten",copied:"Kopiert!",playing:"Abspielen...",
+err_tts:"TTS Fehler",j_count:"Witze",topics:"Themen:",found:"Gefunden:",
+describe:"Beschreibe eine Situation!",fun:"Witzig",off:"Beleidigend",clean:"Sicher",
+fav_a:"Favorit",fav_r:"In Favoriten",
+q_work:"Arbeit",q_it:"IT",q_fam:"Familie",q_mon:"Geld",q_love:"Liebe",q_hp:"Gesundheit",q_ai:"KI",q_cat:"Katzen"},
+fr:{title:"Blague en Contexte",sub:"BLAGUES IA",s_jokes:"Blagues",s_cats:"Categories",s_avg:"Moyenne",s_favs:"Favoris",
+t_ctx:"En contexte",t_cat:"Categories",t_rnd:"Aleatoire",t_fav:"Favoris",t_srch:"Recherche",
+ctx_t:"Decrivez la situation",ctx_d:"Decrivez le contexte et nous trouverons la blague parfaite!",
+ctx_ph:"Par exemple: en reunion, le patron dit des betises...",
+b_find:"Trouver!",b_gen:"Generer IA",b_rnd:"Aleatoire!",b_srch:"Chercher",b_stop:"Arret",
+cat_t:"Categories",fav_t:"Favoris",srch_t:"Rechercher",srch_ph:"Mot ou phrase...",
+offline:"Serveur indisponible",loading:"Recherche...",generating:"Generation...",
+no_res:"Rien trouve",no_fav:"Pas de favoris",copied:"Copie!",playing:"Lecture...",
+err_tts:"Erreur TTS",j_count:"blagues",topics:"Themes:",found:"Trouves:",
+describe:"Decrivez une situation!",fun:"Drole",off:"Offensant",clean:"Correct",
+fav_a:"Favori",fav_r:"En favoris",
+q_work:"Travail",q_it:"IT",q_fam:"Famille",q_mon:"Argent",q_love:"Amour",q_hp:"Sante",q_ai:"IA",q_cat:"Chats"},
+pt:{title:"Piada em Contexto",sub:"PIADAS IA",s_jokes:"Piadas",s_cats:"Categorias",s_avg:"Media",s_favs:"Favoritos",
+t_ctx:"Em contexto",t_cat:"Categorias",t_rnd:"Aleatoria",t_fav:"Favoritos",t_srch:"Busca",
+ctx_t:"Descreva a situacao",ctx_d:"Descreva o contexto e encontraremos a piada perfeita!",
+ctx_ph:"Por exemplo: numa reuniao, o chefe falando bobagem...",
+b_find:"Encontrar!",b_gen:"Gerar IA",b_rnd:"Aleatoria!",b_srch:"Buscar",b_stop:"Parar",
+cat_t:"Categorias",fav_t:"Favoritos",srch_t:"Buscar",srch_ph:"Palavra ou frase...",
+offline:"Servidor indisponivel",loading:"Procurando...",generating:"Gerando...",
+no_res:"Nada encontrado",no_fav:"Sem favoritos",copied:"Copiado!",playing:"Tocando...",
+err_tts:"Erro TTS",j_count:"piadas",topics:"Temas:",found:"Encontrados:",
+describe:"Descreva uma situacao!",fun:"Engracado",off:"Ofensivo",clean:"Limpo",
+fav_a:"Favorito",fav_r:"Nos favoritos",
+q_work:"Trabalho",q_it:"IT",q_fam:"Familia",q_mon:"Dinheiro",q_love:"Amor",q_hp:"Saude",q_ai:"IA",q_cat:"Gatos"},
+zh:{title:"情境笑话",sub:"AI情境笑话",
+s_jokes:"笑话",s_cats:"分类",s_avg:"评分",s_favs:"收藏",
+t_ctx:"情境",t_cat:"分类",t_rnd:"随机",t_fav:"收藏",t_srch:"搜索",
+ctx_t:"描述场景",ctx_d:"描述背景，我们会找到完美的笑话！",
+ctx_ph:"例如：坐在会议中...",
+b_find:"找笑话!",b_gen:"AI生成",b_rnd:"随机!",b_srch:"搜索",b_stop:"停止",
+cat_t:"笑话分类",fav_t:"收藏",srch_t:"搜索",srch_ph:"输入单词...",
+offline:"服务器不可用",loading:"找笑话...",generating:"AI生成...",
+no_res:"没找到",no_fav:"还没有收藏",copied:"已复制!",playing:"播放...",err_tts:"TTS错误",
+j_count:"笑话",topics:"主题:",found:"找到:",
+describe:"描述场景!",fun:"搞笑",off:"冒犯",clean:"无害",
+fav_a:"收藏",fav_r:"已收藏",
+q_work:"工作",q_it:"IT",q_fam:"家庭",q_mon:"钱",q_love:"爱情",q_hp:"健康",q_ai:"AI",q_cat:"猫"}
 };
-const CAT_NAMES = {
-    'en_misc': 'Misc (EN)', 'en_family': 'Family (EN)', 'en_work': 'Work (EN)',
-    'en_science': 'Science (EN)', 'en_animals': 'Animals (EN)', 'en_food': 'Food (EN)',
-    'en_sports': 'Sports (EN)', 'en_crime': 'Crime (EN)', 'en_medical': 'Medical (EN)',
-    'en_music': 'Music (EN)', 'en_technology': 'Tech (EN)', 'en_political': 'Political (EN)',
-    'en_religion': 'Religion (EN)', 'en_bar': 'Bar (EN)', 'en_relationship': 'Love (EN)',
-    'en_professions': 'Jobs (EN)',
-    'es_misc': 'Varios (ES)', 'de_misc': 'Verschiedenes (DE)', 'fr_misc': 'Divers (FR)',
-    'pt_misc': 'Diversos (PT)', 'zh_misc': '杂项 (ZH)', 'ja_misc': 'その他 (JA)',
-    'hi_misc': 'विविध (HI)', 'ar_misc': 'متنوع (AR)'
-};
+let LANG=localStorage.getItem('jic_lang')||'en';
+function t(k){return(I18N[LANG]&&I18N[LANG][k])||I18N.en[k]||k}
+function setLang(l){LANG=l;localStorage.setItem('jic_lang',l);applyI18N();loadStats()}
+function applyI18N(){
+document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=t(e.getAttribute('data-i18n'))});
+document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.getAttribute('data-i18n-ph'))});
+document.documentElement.lang=LANG;buildQT();
+}
+let TH=localStorage.getItem('jic_theme')||'dark';
+function togTheme(){TH=TH==='dark'?'light':'dark';localStorage.setItem('jic_theme',TH);applyTh()}
+function applyTh(){document.body.setAttribute('data-theme',TH);document.getElementById('thBtn').textContent=TH==='dark'?'\u263e':'\u2600'}
 
-let favorites = [];
-let _favoriteJokes = []; // #29: Cache favorite jokes to avoid double fetch
+const API='';
+let favs=[],_fJ=[],curAudio=null;
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
-// Init
-document.addEventListener('DOMContentLoaded', () => {
-    loadStats();
-    loadCategories();
-    loadFavorites();
-    setupTabs();
+async function api(p,o={}){
+try{const r=await fetch(API+p,o);if(!r.ok){console.error('API',r.status);return null}return await r.json()}
+catch(e){console.error(e);document.getElementById('offB').style.display='block';setTimeout(()=>document.getElementById('offB').style.display='none',5000);return null}
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+applyTh();document.getElementById('langSel').value=LANG;applyI18N();
+loadStats();loadCats();loadFavs();setupTabs();
 });
 
-function setupTabs() {
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            tab.classList.add('active');
-            document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-        });
-    });
+function setupTabs(){
+document.querySelectorAll('.tab').forEach(tab=>{
+tab.addEventListener('click',()=>{
+document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false')});
+document.querySelectorAll('.tc').forEach(c=>c.classList.remove('active'));
+tab.classList.add('active');tab.setAttribute('aria-selected','true');
+document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
+});
+tab.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')tab.click()});
+});
 }
 
-async function api(path, opts = {}) {
-    try {
-        const res = await fetch(API + path, opts);
-        if (!res.ok) {
-            console.error('API error:', res.status, res.statusText);
-            return null;
-        }
-        return await res.json();
-    } catch(e) {
-        console.error('API error:', e);
-        // Show offline banner
-        const banner = document.getElementById('offlineBanner');
-        if (banner) {
-            banner.style.display = 'block';
-            setTimeout(() => banner.style.display = 'none', 5000);
-        }
-        return null;
-    }
+async function loadStats(){
+const d=await api('/api/stats');if(!d)return;
+document.getElementById('sJ').textContent=(d.total_jokes||0).toLocaleString();
+document.getElementById('sC').textContent=d.categories||0;
+document.getElementById('sR').textContent=d.avg_rating||0;
+document.getElementById('sF').textContent=d.favorites_count||0;
+const l=document.getElementById('sL');l.textContent=d.llm_available?'ON':'OFF';
+l.style.color=d.llm_available?'var(--grn)':'var(--org)';
 }
 
-async function loadStats() {
-    const data = await api('/api/stats');
-    if (data) {
-        document.getElementById('statJokes').textContent = data.total_jokes;
-        document.getElementById('statCats').textContent = data.categories;
-        document.getElementById('statRating').textContent = data.avg_rating;
-        document.getElementById('statFavs').textContent = data.favorites_count;
-        document.getElementById('statVocab').textContent = data.vocabulary_size || '?';
-        const llmEl = document.getElementById('llmStatus');
-        if (data.llm_available) {
-            llmEl.className = 'stat-item llm-on';
-            llmEl.innerHTML = '🤖 LLM: <span>✅ ON</span>';
-        } else {
-            llmEl.className = 'stat-item llm-off';
-            llmEl.innerHTML = '🤖 LLM: <span>OFF</span>';
-        }
-    }
+const CE={'\u0440\u0430\u0431\u043e\u0442\u0430':'\ud83d\udcbc','\u0430\u0439\u0442\u0438':'\ud83d\udcbb','\u0434\u0435\u043d\u044c\u0433\u0438':'\ud83d\udcb0',
+'\u0441\u0435\u043c\u044c\u044f':'\ud83d\udc6a','\u043f\u043e\u043b\u0438\u0442\u0438\u043a\u0430':'\ud83c\udfdb','\u0437\u0434\u043e\u0440\u043e\u0432\u044c\u0435':'\ud83c\udfe5',
+'\u043f\u0443\u0442\u0435\u0448\u0435\u0441\u0442\u0432\u0438\u044f':'\u2708\ufe0f','\u0435\u0434\u0430':'\ud83c\udf7d\ufe0f','\u043d\u0430\u0443\u043a\u0430':'\ud83d\udd2c',
+'\u0441\u043f\u043e\u0440\u0442':'\u26bd','\u043e\u0431\u0440\u0430\u0437\u043e\u0432\u0430\u043d\u0438\u0435':'\ud83c\udf93','\u043e\u0442\u043d\u043e\u0448\u0435\u043d\u0438\u044f':'\ud83d\udc91',
+'\u043a\u043e\u0440\u043e\u043d\u0430\u0432\u0438\u0440\u0443\u0441':'\ud83d\ude37',
+'en_misc':'\ud83d\ude02','en_family':'\ud83d\udc6a','en_work':'\ud83d\udcbc','en_science':'\ud83d\udd2c',
+'en_animals':'\ud83d\udc3e','en_food':'\ud83c\udf7d\ufe0f','en_sports':'\u26bd','en_technology':'\ud83d\udcbb'};
+function ge(c){return CE[c]||'\ud83d\udcd6'}
+
+async function loadCats(){
+const d=await api('/api/categories');if(!d)return;
+const g=document.getElementById('catG');g.innerHTML='';
+Object.entries(d).sort((a,b)=>b[1]-a[1]).forEach(([cat,cnt])=>{
+const card=document.createElement('div');card.className='cc';
+card.innerHTML='<div class="ce">'+ge(cat)+'</div><div class="cn">'+esc(cat)+'</div><div class="ct">'+cnt+' '+t('j_count')+'</div>';
+card.addEventListener('click',()=>loadCatJ(cat));g.appendChild(card);
+});
 }
 
-async function loadCategories() {
-    const data = await api('/api/categories');
-    if (!data) return;
-    const grid = document.getElementById('categoriesGrid');
-    grid.innerHTML = '';
-    const entries = Object.entries(data).sort((a,b) => b[1] - a[1]);
-    for (const [cat, count] of entries) {
-        const emoji = CAT_EMOJIS[cat] || '📖';
-        const name = CAT_NAMES[cat] || cat;
-        grid.innerHTML += `
-            <div class="category-card" data-cat="${esc(cat)}">
-                <div class="emoji">${emoji}</div>
-                <div class="name">${esc(name)}</div>
-                <div class="count">${count} анекдотов</div>
-            </div>
-        `;
-    }
-    // Use event delegation instead of inline onclick
-    grid.querySelectorAll('.category-card').forEach(card => {
-        card.addEventListener('click', () => loadCategoryJokes(card.dataset.cat));
-    });
+async function loadCatJ(cat){
+const d=await api('/api/jokes?category='+encodeURIComponent(cat)+'&count=10');
+if(!d)return;document.getElementById('catJ').innerHTML=d.jokes.map(j=>rCard(j)).join('');
 }
 
-async function loadCategoryJokes(category) {
-    const data = await api(`/api/jokes?category=${encodeURIComponent(category)}&count=10`);
-    if (!data) return;
-    document.getElementById('categoryJokes').innerHTML = data.jokes.map(j => renderJokeCard(j)).join('');
+const QT=[{k:'q_work',q:'work boss office'},{k:'q_it',q:'programmer code bug'},
+{k:'q_fam',q:'family wife kids'},{k:'q_mon',q:'money salary credit'},
+{k:'q_love',q:'love relationship dating'},{k:'q_hp',q:'health doctor diet'},
+{k:'q_ai',q:'chatgpt neural network AI'},{k:'q_cat',q:'cat cats meow'}];
+function buildQT(){
+const el=document.getElementById('qTags');el.innerHTML='';
+QT.forEach(q=>{const s=document.createElement('span');s.className='qti';s.textContent=t(q.k);
+s.addEventListener('click',()=>{document.getElementById('ctxIn').value=q.q});el.appendChild(s)});
 }
 
-function setContext(text) {
-    document.getElementById('contextInput').value = text;
+async function findJoke(){
+const text=document.getElementById('ctxIn').value.trim();
+if(!text){showToast(t('describe'));return}
+const r=document.getElementById('ctxR');
+r.innerHTML='<div class="ld"><div class="sp"></div><p>'+t('loading')+'</p></div>';
+const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,count:5})});
+if(!d||!d.jokes||!d.jokes.length){r.innerHTML='<div class="em"><div class="ei">\ud83e\udd37</div><p>'+t('no_res')+'</p></div>';return}
+const mc=document.getElementById('mCats');
+if(d.matched_categories&&d.matched_categories.length){
+mc.style.display='flex';mc.innerHTML='<span style="font-size:11px;color:var(--mut)">'+t('topics')+'</span>'+
+d.matched_categories.map(c=>'<span class="mti">'+ge(c)+' '+esc(c)+'</span>').join('');
+}else mc.style.display='none';
+d.jokes.sort((a,b)=>(b.funniness||b.rating||0)-(a.funniness||a.rating||0));
+r.innerHTML=d.jokes.map(j=>rCard(j)).join('');
 }
 
-async function findJoke() {
-    const text = document.getElementById('contextInput').value.trim();
-    if (!text) { showToast('Опишите ситуацию или тему!'); return; }
-    
-    const results = document.getElementById('contextResults');
-    results.innerHTML = '<div class="loading"><div class="spinner"></div><p>Подбираю анекдот...</p></div>';
-    
-    const data = await api('/api/jokes/context', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({text, count: 3})
-    });
-    
-    if (!data || !data.jokes.length) {
-        results.innerHTML = '<div class="empty-state"><div class="emoji">🤷</div><p>Не нашёл подходящий анекдот. Попробуйте другую тему!</p></div>';
-        return;
-    }
-    
-    // Show matched categories
-    const mc = document.getElementById('matchedCategories');
-    if (data.matched_categories && data.matched_categories.length) {
-        mc.style.display = 'flex';
-        mc.innerHTML = '<span style="font-size:13px;color:#aaa">Темы:</span>' +
-            data.matched_categories.map(c => `<span class="matched-cat">${CAT_EMOJIS[c] || '📖'} ${esc(c)}</span>`).join('');
-    } else {
-        mc.style.display = 'none';
-    }
-    
-    results.innerHTML = data.jokes.map((j, i) => renderJokeCard(j, i > 0)).join('');
+async function genJoke(){
+const text=document.getElementById('ctxIn').value.trim();
+if(!text){showToast(t('describe'));return}
+const r=document.getElementById('ctxR');
+r.innerHTML='<div class="ld"><div class="sp"></div><p>'+t('generating')+'</p></div>';
+const d=await api('/api/jokes/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,count:1})});
+if(!d){r.innerHTML='<div class="em"><div class="ei">\ud83e\udd16</div><p>'+t('no_res')+'</p></div>';return}
+document.getElementById('mCats').style.display='none';
+r.innerHTML=rCard(d.joke||d);
 }
 
-async function generateJoke() {
-    const text = document.getElementById('contextInput').value.trim();
-    if (!text) { showToast('Опишите ситуацию или тему!'); return; }
-    
-    const results = document.getElementById('contextResults');
-    results.innerHTML = '<div class="loading"><div class="spinner"></div><p>🤖 Генерирую AI-анекдот...</p></div>';
-    
-    const data = await api('/api/jokes/generate', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({text, count: 1})
-    });
-    
-    if (!data) {
-        results.innerHTML = '<div class="empty-state"><div class="emoji">🤖</div><p>AI пока не в настроении. Попробуйте ещё раз!</p></div>';
-        return;
-    }
-    
-    document.getElementById('matchedCategories').style.display = 'none';
-    results.innerHTML = renderJokeCard(data.joke, false);
+async function randJoke(){
+const r=document.getElementById('rndR');
+r.innerHTML='<div class="ld"><div class="sp"></div></div>';
+const d=await api('/api/joke/random');if(d)r.innerHTML=rCard(d);
 }
 
-async function randomJoke() {
-    const results = document.getElementById('randomResults');
-    results.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-    
-    const data = await api('/api/joke/random');
-    if (data) {
-        results.innerHTML = renderJokeCard(data);
-    }
+async function doSearch(){
+const q=document.getElementById('srchIn').value.trim();if(!q)return;
+const r=document.getElementById('srchR');
+r.innerHTML='<div class="ld"><div class="sp"></div></div>';
+const d=await api('/api/jokes/search?q='+encodeURIComponent(q));
+if(d&&d.jokes&&d.jokes.length){
+d.jokes.sort((a,b)=>(b.funniness||b.rating||0)-(a.funniness||a.rating||0));
+r.innerHTML='<p style="color:var(--mut);margin-bottom:8px">'+t('found')+' '+d.total+'</p>'+d.jokes.map(j=>rCard(j)).join('');
+}else r.innerHTML='<div class="em"><div class="ei">\ud83d\udd0d</div><p>'+t('no_res')+'</p></div>';
 }
 
-async function searchJokes() {
-    const q = document.getElementById('searchInput').value.trim();
-    if (!q) return;
-    
-    const results = document.getElementById('searchResults');
-    results.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-    
-    const data = await api(`/api/jokes/search?q=${encodeURIComponent(q)}`);
-    if (data && data.jokes.length) {
-        results.innerHTML = `<p style="color:#aaa;margin-bottom:12px">Найдено: ${data.total}</p>` + data.jokes.map(j => renderJokeCard(j)).join('');
-    } else {
-        results.innerHTML = '<div class="empty-state"><div class="emoji">🔍</div><p>Ничего не найдено</p></div>';
-    }
+async function loadFavs(){
+const d=await api('/api/favorites');
+if(d&&d.jokes){favs=d.jokes.map(j=>j.id);_fJ=d.jokes}renderFavs();
+}
+function renderFavs(){
+const el=document.getElementById('favL');
+if(_fJ&&_fJ.length)el.innerHTML=_fJ.map(j=>rCard(j)).join('');
+else el.innerHTML='<div class="em"><div class="ei">\u2764\ufe0f</div><p>'+t('no_fav')+'</p></div>';
 }
 
-async function loadFavorites() {
-    const data = await api('/api/favorites');
-    if (data && data.jokes) {
-        favorites = data.jokes.map(j => j.id);
-        _favoriteJokes = data.jokes;
-    }
-    renderFavoritesFromCache();
+async function togFav(id,btn){
+const is=favs.includes(id);
+if(is){await api('/api/favorites/'+id,{method:'DELETE'});favs=favs.filter(f=>f!==id);_fJ=_fJ.filter(j=>j.id!==id);
+btn.classList.remove('fo');btn.innerHTML='\ud83e\ude75 '+t('fav_a')}
+else{await api('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({joke_id:id})});
+favs.push(id);btn.classList.add('fo');btn.innerHTML='\u2764\ufe0f '+t('fav_r')}
+loadStats();
 }
 
-function renderFavorites() {
-    // Fetch fresh data then render
-    api('/api/favorites').then(data => {
-        if (data && data.jokes && data.jokes.length) {
-            _favoriteJokes = data.jokes;
-            favorites = data.jokes.map(j => j.id);
-            renderFavoritesFromCache();
-        } else {
-            _favoriteJokes = [];
-            document.getElementById('favoritesList').innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
-        }
-    });
+function rCard(j){
+const is=favs.includes(j.id);
+const fn=j.funniness!=null?j.funniness:Math.round((j.rating||3.5)*10)/10;
+const of=j.offensiveness!=null?j.offensiveness:Math.round((j.rating?5.5-(j.rating):1.5)*10)/10;
+const cb=of<=2.0?'<span class="bd bdc">\u2713 '+t('clean')+'</span>':'';
+const sb=j.semantic_score?'<span class="bd bds">\ud83c\udfaf '+Math.round(j.semantic_score*100)+'%</span>':'';
+const gb=j.generated?'<span class="bd bdg">\ud83e\udd16 AI</span>':'';
+let sh='';const sc=Math.max(0,Math.min(5,Math.round(fn)));
+for(let i=1;i<=5;i++)sh+='<span class="st '+(i<=sc?'on':'off')+'" data-jid="'+j.id+'" data-val="'+i+'">\u2605</span>';
+const oc=of<=2?'var(--grn)':of<=3.5?'var(--org)':'var(--red)';
+return '<div class="jc"><div class="jt">'+esc(j.text)+'</div>'+
+'<div class="jm"><span class="jcat">'+ge(j.category)+' '+esc(j.category)+'</span><div class="jb">'+cb+sb+gb+'</div></div>'+
+'<div class="rr"><span class="rl">'+t('fun')+'</span><div class="sts">'+sh+'</div><span class="rv">'+fn.toFixed(1)+'/5</span>'+
+'&nbsp;&nbsp;<span class="rl">'+t('off')+'</span><span style="color:'+oc+';font-weight:700;font-size:12px">'+of.toFixed(1)+'/5</span></div>'+
+'<div class="ja">'+
+'<button class="ab '+(is?'fo':'')+'" onclick="togFav('+j.id+',this)">'+(is?'\u2764\ufe0f '+t('fav_r'):'\ud83e\ude75 '+t('fav_a'))+'</button>'+
+'<button class="ab cpb">\ud83d\udccb</button>'+
+'<button class="ab spb">\ud83d\udd0a</button>'+
+'</div></div>';
 }
 
-function renderFavoritesFromCache() {
-    const list = document.getElementById('favoritesList');
-    if (_favoriteJokes && _favoriteJokes.length) {
-        list.innerHTML = _favoriteJokes.map(j => renderJokeCard(j)).join('');
-    } else {
-        list.innerHTML = '<div class="empty-state"><div class="emoji">❤️</div><p>Пока нет избранных анекдотов.<br>Нажмите ♡ на любом анекдоте!</p></div>';
-    }
-}
-
-function renderJokeCard(joke, collapsed = false) {
-    const emoji = CAT_EMOJIS[joke.category] || '📖';
-    const isFav = favorites.includes(joke.id);
-    const stars = '⭐'.repeat(Math.round(joke.rating || 0));
-    const tags = (joke.tags || []).map(t => `<span class="joke-tag">#${t}</span>`).join('');
-    const score = joke.semantic_score ? `<span class="joke-tag" style="background:rgba(83,52,131,0.3)">🎯 ${Math.round(joke.semantic_score*100)}%</span>` : '';
-    const genBadge = joke.generated ? `<span class="joke-tag" style="background:rgba(233,69,96,0.2)">🤖 ${joke.generator === 'llm' ? 'GPT' : 'AI'}</span>` : '';
-    
-    return `
-        <div class="joke-card">
-            <div class="joke-text">${esc(joke.text)}</div>
-            <div class="joke-meta">
-                <span class="joke-category">${emoji} ${CAT_NAMES[joke.category] || joke.category}</span>
-                <div class="joke-rating">${stars} ${joke.rating || ''}</div>
-            </div>
-            <div class="joke-tags">${tags}${score}${genBadge}</div>
-            <div class="joke-actions">
-                <button class="joke-action-btn ${isFav ? 'fav-active' : ''}" onclick="toggleFavorite(${joke.id}, this)">
-                    ${isFav ? '❤️' : '🤍'} ${isFav ? 'В избранном' : 'В избранное'}
-                </button>
-                <button class="joke-action-btn copy-btn">
-                    📋 Копировать
-                </button>
-                <button class="joke-action-btn speak-btn">
-                    🔊 Озвучить
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-async function toggleFavorite(id, btn) {
-    const isFav = favorites.includes(id);
-    
-    if (isFav) {
-        await api(`/api/favorites/${id}`, {method: 'DELETE'});
-        favorites = favorites.filter(f => f !== id);
-        _favoriteJokes = _favoriteJokes.filter(j => j.id !== id);
-        btn.classList.remove('fav-active');
-        btn.innerHTML = '🤍 В избранное';
-    } else {
-        await api('/api/favorites', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({joke_id: id})
-        });
-        favorites.push(id);
-        btn.classList.add('fav-active');
-        btn.innerHTML = '❤️ В избранном';
-    }
-    
-    loadStats();
-}
-
-// #47: Use event delegation for copy/speak buttons with safe dataset API
-document.addEventListener('click', function(e) {
-    const copyBtn = e.target.closest('.copy-btn');
-    if (copyBtn) {
-        const card = copyBtn.closest('.joke-card');
-        const text = card ? card.querySelector('.joke-text').textContent : '';
-        navigator.clipboard.writeText(text).then(() => showToast('Анекдот скопирован! 📋'));
-        return;
-    }
-    const speakBtn = e.target.closest('.speak-btn');
-    if (speakBtn) {
-        speakJoke(speakBtn);
-    }
+document.addEventListener('click',function(e){
+if(e.target.classList.contains('st')){
+const jid=parseInt(e.target.dataset.jid),val=parseInt(e.target.dataset.val);
+if(jid&&val)rateJ(jid,val);return}
+const cb=e.target.closest('.cpb');
+if(cb){const c=cb.closest('.jc'),tx=c?c.querySelector('.jt').textContent:'';
+navigator.clipboard.writeText(tx).then(()=>showToast(t('copied')));return}
+const sb=e.target.closest('.spb');if(sb){speakJ(sb)}
 });
 
-// Global audio player
-let currentAudio = null;
-
-async function speakJoke(btn) {
-    // #47: Get text safely from the joke-text element, not from data attribute
-    const card = btn.closest('.joke-card');
-    const text = card ? card.querySelector('.joke-text').textContent : '';
-    if (!text) return;
-
-    // Stop if already playing
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio = null;
-        btn.innerHTML = '🔊 Озвучить';
-        return;
-    }
-
-    btn.innerHTML = '⏳ Загрузка...';
-
-    try {
-        const res = await fetch(API + '/api/voice/tts', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({text: text})
-        });
-        const data = await res.json();
-
-        if (data.error) {
-            showToast('Ошибка TTS: ' + data.error);
-            btn.innerHTML = '🔊 Озвучить';
-            return;
-        }
-
-        if (data.audio_file) {
-            const audio = new Audio(API + data.audio_file);
-            currentAudio = audio;
-            btn.innerHTML = '⏹ Стоп';
-
-            audio.onended = () => {
-                currentAudio = null;
-                btn.innerHTML = '🔊 Озвучить';
-            };
-            audio.onerror = () => {
-                currentAudio = null;
-                btn.innerHTML = '🔊 Озвучить';
-                showToast('Ошибка воспроизведения');
-            };
-
-            audio.play();
-            showToast('🔊 Воспроизвожу...');
-        }
-    } catch(e) {
-        btn.innerHTML = '🔊 Озвучить';
-        showToast('Ошибка: ' + e.message);
-    }
+async function rateJ(jid,val){
+await api('/api/rate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({joke_id:jid,rating:val})});
+showToast('\u2b50 '+val+'/5');loadStats();
 }
 
-function shareJoke(text) {
-    if (navigator.share) {
-        navigator.share({title: '😂 Анекдот в тему', text: text});
-    } else {
-        navigator.clipboard.writeText(text).then(() => showToast('Анекдот скопирован для шаринга!'));
-    }
+function stopTTS(){
+if(curAudio){curAudio.pause();curAudio=null}
+document.getElementById('ttsP').classList.remove('sh');
+document.querySelectorAll('.spb.pl').forEach(b=>b.classList.remove('pl'));
 }
 
-function showToast(msg) {
-    const toast = document.getElementById('toast');
-    toast.textContent = msg;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2500);
+async function speakJ(btn){
+const c=btn.closest('.jc'),tx=c?c.querySelector('.jt').textContent:'';
+if(!tx)return;if(curAudio){stopTTS();return}
+btn.classList.add('pl');btn.innerHTML='\u23f3';
+try{
+const r=await fetch(API+'/api/voice/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:tx})});
+const d=await r.json();
+if(d.error||!d.audio_file){showToast(t('err_tts')+': '+(d.error||''));btn.classList.remove('pl');btn.innerHTML='\ud83d\udd0a';return}
+const a=new Audio(API+d.audio_file);curAudio=a;
+document.getElementById('ttsT').textContent=tx.substring(0,80)+(tx.length>80?'...':'');
+document.getElementById('ttsP').classList.add('sh');btn.innerHTML='\u23f9';
+a.onended=()=>stopTTS();a.onerror=()=>{stopTTS();showToast(t('err_tts'))};a.play();showToast(t('playing'));
+}catch(e){btn.classList.remove('pl');btn.innerHTML='\ud83d\udd0a';showToast(t('err_tts')+': '+e.message)}
 }
+
+function showToast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2500)}
+
 </script>
 </body>
 </html>
