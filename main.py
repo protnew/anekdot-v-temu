@@ -7,7 +7,7 @@
 - User CRUD, analytics, social, personalization
 - PWA, multi-language, moderation, i18n
 """
-import json, os, random, hashlib, time, subprocess, tempfile, base64, asyncio, threading
+import json, os, random, hashlib, time, subprocess, tempfile, base64, asyncio, threading, logging, sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 from collections import defaultdict
@@ -18,6 +18,10 @@ from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from moderation import ProfanityFilter, SpamDetector, ContentModerator
 from i18n import t, detect_language, get_tts_lang_code, DEFAULT_LANG, normalize_lang
+
+# Logging setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%H:%M:%S", handlers=[logging.StreamHandler(sys.stdout)])
+log = logging.getLogger("anekdot")
 
 
 async def _run_subprocess(args, timeout=30):
@@ -135,9 +139,17 @@ async def lifespan(app):
         search_engine = None
     print(t("console.shutdown_complete"))
 
-app = FastAPI(title="Анекдот в тему", version="3.14.2", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.16.0", lifespan=lifespan)
 
-# Allow CORS for local development
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    elapsed = (time.time() - start) * 1000
+    log.info("%s %s → %d (%.0fms)", request.method, request.url.path, response.status_code, elapsed)
+    return response
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
