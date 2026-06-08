@@ -1,4 +1,4 @@
-"""Anekdot v Temu — AI-powered contextual joke app v3.14.2
+"""Anekdot v Temu — AI-powered contextual joke app v3.16.0
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -314,8 +314,8 @@ def _get_search_engine():
 # Keyword map (fallback + category boosting)
 # ============================================================
 KEYWORD_MAP = {
-    "работа": ["работа", "работать", "зарплата", "начальник", "коллега", "офис", "карьера", "должность", "премия", "совещание", "босс", "подчинённый", "резюме", "собеседование", "увольнение", "отпуск", "дедлайн", "проект", "переработ"],
-    "айти": ["программист", "код", "айти", "it", "python", "javascript", "git", "сервер", "баг", "devops", "qa", "тестировщик", "разработчик", "backend", "frontend", "sql", "linux", "девопс", "джуниор", "сеньор", "прод", "рефакторинг", "документация", "npm", "docker", "kubernetes", "микросервис", "legacy", "тип", "компиля", "фреймворк"],
+    "работа": ["работа", "работать", "зарплата", "начальник", "коллега", "офис", "карьера", "должность", "премия", "совещание", "босс", "подчинённый", "резюме", "собеседование", "увольнение", "отпуск", "дедлайн", "проект", "переработ", "meeting", "boss", "office", "deadline", "project", "salary", "work", "job", "boss", "deadline", "manager", "corporate"],
+    "айти": ["программист", "код", "айти", "it", "python", "javascript", "git", "сервер", "баг", "devops", "qa", "тестировщик", "тестирование", "по", "software", "testing", "разработчик", "backend", "frontend", "sql", "linux", "девопс", "джуниор", "сеньор", "прод", "рефакторинг", "документация", "npm", "docker", "kubernetes", "микросервис", "legacy", "тип", "компиля", "фреймворк", "бета", "релиз", "деплой", "сборка"],
     "деньги": ["деньги", "зарплата", "банк", "кредит", "налог", "рубль", "доллар", "евро", "инвестиции", "крипта", "бизнес", "экономия", "покупк", "цена", "стоимость", "бюджет", "ипотека", "бухгалтер", "доход", "расход", "накоп", "богат", "бедн", "скидк", "акция", "долг"],
     "семья": ["семья", "жена", "муж", "мама", "папа", "бабушка", "дети", "ребёнок", "ребенок", "свадьба", "брак", "тёща", "зять", "свекровь", "дом", "домашний", "муж", "дочка", "сын", "дедушка"],
     "политика": ["политик", "выборы", "президент", "министр", "депутат", "государство", "правительств", "закон", "дума", "референдум", "партия", "власть", "налог"],
@@ -582,20 +582,50 @@ async def get_jokes(
 async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10, ge=1, le=50)):
     """Full-text search using TF-IDF semantic search."""
     engine = await asyncio.to_thread(_get_search_engine)
-    results = await asyncio.to_thread(engine.search, q, limit)
-    return {"jokes": results, "total": len(results)}
+    results = await asyncio.to_thread(engine.search, q, limit * 3)
+    # Language-aware scoring
+    detected_lang = detect_language(q)
+    lang_prefix_map = {"ru": "", "en": "en_", "es": "es_", "de": "de_", "fr": "fr_", "pt": "pt_", "zh": "zh_"}
+    prefer_prefix = lang_prefix_map.get(detected_lang, "en_")
+    for joke in results:
+        cat = joke.get("category", "")
+        if prefer_prefix == "":
+            is_lang_match = not any(cat.startswith(p) for p in ["en_", "es_", "de_", "fr_", "pt_", "zh_"])
+        else:
+            is_lang_match = cat.startswith(prefer_prefix)
+        if not is_lang_match:
+            joke["semantic_score"] = joke.get("semantic_score", 0) * 0.3
+    results.sort(key=lambda x: x.get("semantic_score", 0), reverse=True)
+    return {"jokes": results[:limit], "total": len(results[:limit])}
 
 @app.post("/api/jokes/context")
 async def contextual_joke(request: JokeRequest):
     """Get contextually relevant jokes using semantic search + keyword boosting."""
+    # Detect query language to prioritize matching jokes
+    detected_lang = detect_language(request.text)
+    # Map detected language to category prefix
+    lang_prefix_map = {"ru": "", "en": "en_", "es": "es_", "de": "de_", "fr": "fr_", "pt": "pt_", "zh": "zh_"}
+    prefer_prefix = lang_prefix_map.get(detected_lang, "en_")
+    
     # Step 1: Semantic search
     engine = await asyncio.to_thread(_get_search_engine)
-    semantic_results = await asyncio.to_thread(engine.search, request.text, 30)
+    semantic_results = await asyncio.to_thread(engine.search, request.text, 50)
     
     # Step 2: Keyword matching for category boosting
     matching_cats = find_matching_categories(request.text)
     
-    # Step 3: Combine scores
+    # Step 3: Language-aware scoring — prefer jokes matching query language
+    for joke in semantic_results:
+        cat = joke.get("category", "")
+        if prefer_prefix == "":
+            # Russian: prefer non-prefixed categories
+            is_lang_match = not any(cat.startswith(p) for p in ["en_", "es_", "de_", "fr_", "pt_", "zh_"])
+        else:
+            is_lang_match = cat.startswith(prefer_prefix)
+        if not is_lang_match:
+            joke["semantic_score"] = joke.get("semantic_score", 0) * 0.3  # Penalize wrong-language jokes
+    
+    # Step 4: Category boosting
     if matching_cats:
         for joke in semantic_results:
             if joke["category"] == matching_cats[0]:
@@ -603,10 +633,10 @@ async def contextual_joke(request: JokeRequest):
             elif joke["category"] in matching_cats:
                 joke["semantic_score"] = joke.get("semantic_score", 0) * 1.3
     
-    # Step 4: Filter out zero-score results (no semantic match)
+    # Step 5: Filter out zero-score results (no semantic match)
     semantic_results = [j for j in semantic_results if j.get("semantic_score", 0) > 0.01]
     
-    # Step 5: If semantic search found nothing, fall back to keyword-only
+    # Step 6: If semantic search found nothing, fall back to keyword-only
     if not semantic_results and matching_cats:
         all_jokes = get_all_jokes()
         pool = [j for j in all_jokes if j["category"] in matching_cats]
@@ -668,14 +698,21 @@ async def generate_joke(request: JokeRequest):
     if matching_cats:
         templates = [j for j in all_jokes if j["category"] in matching_cats]
     else:
-        templates = all_jokes
+        # No keyword match — try semantic search to find relevant jokes
+        engine = await asyncio.to_thread(_get_search_engine)
+        semantic_hits = await asyncio.to_thread(engine.search, request.text, 20)
+        if semantic_hits:
+            templates = semantic_hits
+        else:
+            # Last resort: pick from category that looks related to query language
+            templates = all_jokes
     
     template = random.choice(templates if templates else (all_jokes if all_jokes else [{"text": t("alice.no_jokes_yet"), "rating": 0, "tags": []}]))
     
     return {
         "joke": {
             "id": int(time.time() * 1000000) % 1000000 + random.randint(1, 99999),
-            "text": t("llm.ai_variation", detected_lang, topic=matching_cats[0] if matching_cats else t("llm.fallback_topic", detected_lang)) + "\n" + template["text"],
+            "text": t("llm.ai_variation", detected_lang, topic=matching_cats[0] if matching_cats else request.text[:50]) + "\n" + template["text"],
             "rating": round(template.get("rating", 4.0) + random.uniform(-0.5, 0.5), 1),
             "tags": template.get("tags", []) + ["ai-generated", "template"],
             "category": template.get("category", "misc"),

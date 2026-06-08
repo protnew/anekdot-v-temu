@@ -268,9 +268,10 @@ const API='';
 let favs=[],_fJ=[],curAudio=null;
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
-async function api(p,o={}){
-try{const r=await fetch(API+p,o);if(!r.ok){console.error('API',r.status);return null}return await r.json()}
-catch(e){console.error(e);document.getElementById('offB').style.display='block';setTimeout(()=>document.getElementById('offB').style.display='none',5000);return null}
+async function api(p,o={},timeoutMs=120000){
+const ac=new AbortController();const tid=setTimeout(()=>ac.abort(),timeoutMs);
+try{const r=await fetch(API+p,{...o,signal:ac.signal});clearTimeout(tid);if(!r.ok){console.error('API',r.status);return null}return await r.json()}
+catch(e){clearTimeout(tid);if(e.name==='AbortError'){console.warn('API timeout:',p);return null}console.error(e);document.getElementById('offB').style.display='block';setTimeout(()=>document.getElementById('offB').style.display='none',5000);return null}
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
@@ -339,7 +340,7 @@ const text=document.getElementById('ctxIn').value.trim();
 if(!text){showToast(t('describe'));return}
 const r=document.getElementById('ctxR');
 r.innerHTML='<div class="ld"><div class="sp"></div><p>'+t('loading')+'</p></div>';
-const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,count:5})});
+const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,count:5})},180000);
 if(!d||!d.jokes||!d.jokes.length){r.innerHTML='<div class="em"><div class="ei">\ud83e\udd37</div><p>'+t('no_res')+'</p></div>';return}
 const mc=document.getElementById('mCats');
 if(d.matched_categories&&d.matched_categories.length){
@@ -357,7 +358,11 @@ const r=document.getElementById('ctxR');
 r.innerHTML='<div class="ld"><div class="sp"></div><p>'+t('generating')+'</p></div>';
 const d=await api('/api/jokes/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,count:1})});
 if(!d){r.innerHTML='<div class="em"><div class="ei">\ud83e\udd16</div><p>'+t('no_res')+'</p></div>';return}
-document.getElementById('mCats').style.display='none';
+const mc=document.getElementById('mCats');
+if(d.matched_categories&&d.matched_categories.length){
+mc.style.display='flex';mc.innerHTML='<span style="font-size:11px;color:var(--mut)">'+t('topics')+'</span>'+
+d.matched_categories.map(c=>'<span class="mti">'+ge(c)+' '+esc(c)+'</span>').join('');
+}else mc.style.display='none';
 r.innerHTML=rCard(d.joke||d);
 }
 
@@ -370,8 +375,8 @@ const d=await api('/api/joke/random');if(d)r.innerHTML=rCard(d);
 async function doSearch(){
 const q=document.getElementById('srchIn').value.trim();if(!q)return;
 const r=document.getElementById('srchR');
-r.innerHTML='<div class="ld"><div class="sp"></div></div>';
-const d=await api('/api/jokes/search?q='+encodeURIComponent(q));
+r.innerHTML='<div class="ld"><div class="sp"></div><p>'+t('loading')+' (first search builds index ~30s)...</p></div>';
+const d=await api('/api/jokes/search?q='+encodeURIComponent(q),{},180000);
 if(d&&d.jokes&&d.jokes.length){
 d.jokes.sort((a,b)=>(b.funniness||b.rating||0)-(a.funniness||a.rating||0));
 r.innerHTML='<p style="color:var(--mut);margin-bottom:8px">'+t('found')+' '+d.total+'</p>'+d.jokes.map(j=>rCard(j)).join('');
