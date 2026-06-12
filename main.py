@@ -23,6 +23,9 @@ from i18n import t, detect_language, get_tts_lang_code, DEFAULT_LANG, normalize_
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%H:%M:%S", handlers=[logging.StreamHandler(sys.stdout)])
 log = logging.getLogger("anekdot")
 
+# Language prefix map — shared between search and context endpoints
+_LANG_PREFIX_MAP = {"ru": "", "en": "en_", "es": "es_", "de": "de_", "fr": "fr_", "pt": "pt_", "zh": "zh_", "ja": "ja_", "ar": "ar_", "hi": "hi_"}
+
 
 async def _run_subprocess(args, timeout=30):
     """Non-blocking subprocess run."""
@@ -326,8 +329,8 @@ def _get_search_engine():
 # Keyword map (fallback + category boosting)
 # ============================================================
 KEYWORD_MAP = {
-    "работа": ["работа", "работать", "зарплата", "начальник", "коллега", "офис", "карьера", "должность", "премия", "совещание", "босс", "подчинённый", "резюме", "собеседование", "увольнение", "отпуск", "дедлайн", "проект", "переработ", "meeting", "boss", "office", "deadline", "project", "salary", "work", "job", "boss", "deadline", "manager", "corporate"],
-    "айти": ["программист", "код", "айти", "it", "python", "javascript", "git", "сервер", "баг", "devops", "qa", "тестировщик", "тестирование", "по", "software", "testing", "разработчик", "backend", "frontend", "sql", "linux", "девопс", "джуниор", "сеньор", "прод", "рефакторинг", "документация", "npm", "docker", "kubernetes", "микросервис", "legacy", "тип", "компиля", "фреймворк", "бета", "релиз", "деплой", "сборка"],
+    "работа": ["работа", "работать", "зарплата", "начальник", "коллега", "офис", "карьера", "должность", "премия", "совещание", "босс", "подчинённый", "резюме", "собеседование", "увольнение", "отпуск", "дедлайн", "проект", "переработ", "meeting", "boss", "office", "deadline", "project", "salary", "work", "job", "manager", "corporate"],
+    "айти": ["программист", "код", "айти", "python", "javascript", "git", "сервер", "баг", "devops", "qa", "тестировщик", "тестирование", "software", "testing", "разработчик", "backend", "frontend", "sql", "linux", "девопс", "джуниор", "сеньор", "прод", "рефакторинг", "документация", "npm", "docker", "kubernetes", "микросервис", "legacy", "тип", "компиля", "фреймворк", "бета", "релиз", "деплой", "сборка"],
     "деньги": ["деньги", "зарплата", "банк", "кредит", "налог", "рубль", "доллар", "евро", "инвестиции", "крипта", "бизнес", "экономия", "покупк", "цена", "стоимость", "бюджет", "ипотека", "бухгалтер", "доход", "расход", "накоп", "богат", "бедн", "скидк", "акция", "долг"],
     "семья": ["семья", "жена", "муж", "мама", "папа", "бабушка", "дети", "ребёнок", "ребенок", "свадьба", "брак", "тёща", "зять", "свекровь", "дом", "домашний", "муж", "дочка", "сын", "дедушка"],
     "политика": ["политик", "выборы", "президент", "министр", "депутат", "государство", "правительств", "закон", "дума", "референдум", "партия", "власть", "налог"],
@@ -339,7 +342,7 @@ KEYWORD_MAP = {
     "образование": ["школа", "университет", "студент", "учитель", "преподаватель", "экзамен", "урок", "учёба", "учеба", "оценка", "диплом", "вуз", "курсы", "ученик", "школьник", "курсовая", "декан", "ректор", "перемен"],
     "отношения": ["любовь", "отношения", "парень", "девушка", "свидание", "романтика", "расставание", "знакомство", "свадьба", "цветы", "поцелуй", "измен"],
     "коронавирус": ["ковид", "коронавирус", "пандемия", "маска", "удалёнк", "удаленк", "зум", "zoom", "карантин", "изоляция", "антисепт", "вакцин"],
-    "искусственный интеллект": ["ии", "ai", "нейросет", "chatgpt", "gpt", "искусствен", "машинн", "обучен", "робот", "модел", "промпт", "deep learning", "llm", "openai", "copilot", "agile"],
+    "искусственный интеллект": ["ии", "нейросет", "chatgpt", "gpt", "искусствен", "машинн", "обучен", "робот", "модел", "промпт", "deep learning", "llm", "openai", "copilot", "agile"],
     "друзья": ["друг", "подруга", "дружба", "долг", "одолжить", "встреча", "компания", "приятель", "товарищ"],
     "котики": ["кот", "кошк", "котик", "мяу", "мурлык", "кис", "рыбка", "аквариум", "котёнок"],
     "авто": ["авто", "машин", "водител", "дорог", "пробк", "бензин", "заправк", "парковк", "гаи", "скорост", "навигатор", "ремонт", "механик", "руль"],
@@ -597,8 +600,7 @@ async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10,
     results = await asyncio.to_thread(engine.search, q, limit * 3)
     # Language-aware scoring
     detected_lang = detect_language(q)
-    lang_prefix_map = {"ru": "", "en": "en_", "es": "es_", "de": "de_", "fr": "fr_", "pt": "pt_", "zh": "zh_"}
-    prefer_prefix = lang_prefix_map.get(detected_lang, "en_")
+    prefer_prefix = _LANG_PREFIX_MAP.get(detected_lang, "en_")
     for joke in results:
         cat = joke.get("category", "")
         if prefer_prefix == "":
@@ -608,7 +610,7 @@ async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10,
         if not is_lang_match:
             joke["semantic_score"] = joke.get("semantic_score", 0) * 0.3
     results.sort(key=lambda x: x.get("semantic_score", 0), reverse=True)
-    return {"jokes": results[:limit], "total": len(results[:limit])}
+    return {"jokes": results[:limit], "total": len(results)}
 
 @app.post("/api/jokes/context")
 async def contextual_joke(request: JokeRequest):
@@ -616,8 +618,7 @@ async def contextual_joke(request: JokeRequest):
     # Detect query language to prioritize matching jokes
     detected_lang = detect_language(request.text)
     # Map detected language to category prefix
-    lang_prefix_map = {"ru": "", "en": "en_", "es": "es_", "de": "de_", "fr": "fr_", "pt": "pt_", "zh": "zh_"}
-    prefer_prefix = lang_prefix_map.get(detected_lang, "en_")
+    prefer_prefix = _LANG_PREFIX_MAP.get(detected_lang, "en_")
     
     # Step 1: Semantic search
     engine = await asyncio.to_thread(_get_search_engine)
@@ -725,7 +726,7 @@ async def generate_joke(request: JokeRequest):
         "joke": {
             "id": int(time.time() * 1000000) % 1000000 + random.randint(1, 99999),
             "text": t("llm.ai_variation", detected_lang, topic=matching_cats[0] if matching_cats else request.text[:50]) + "\n" + template["text"],
-            "rating": round(template.get("rating", 4.0) + random.uniform(-0.5, 0.5), 1),
+            "rating": round(min(max(template.get("rating", 4.0) + random.uniform(-0.5, 0.5), 1.0), 5.0), 1),
             "tags": template.get("tags", []) + ["ai-generated", "template"],
             "category": template.get("category", "misc"),
             "generated": True,
@@ -1609,7 +1610,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.14.2"
+        "version": "3.16.0"
     }
 
 # ============================================================
@@ -1684,5 +1685,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(t("console.starting", version="3.14.2", port=port))
+    print(t("console.starting", version="3.16.0", port=port))
     uvicorn.run(app, host="0.0.0.0", port=port)
