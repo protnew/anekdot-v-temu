@@ -187,7 +187,7 @@ textarea::placeholder{color:var(--mut)}
 </div></div>
 <div class="tp" id="ttsP"><span>🔊</span><span class="tt" id="ttsT"></span><button class="btn bs bg" onclick="stopTTS()">■ <span data-i18n="b_stop">Stop</span></button><span class="tx" onclick="stopTTS()">×</span></div>
 <div class="toast" id="toast"></div>
-<div class="ft"><span data-i18n="title">Joke in Context</span> v3.17.3 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
+<div class="ft"><span data-i18n="title">Joke in Context</span> v3.17.4 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
 <script>
 const I18N={
 en:{title:"Joke in Context",sub:"AI CONTEXTUAL JOKES",s_jokes:"Jokes",s_cats:"Categories",s_avg:"Avg Rating",s_favs:"Favorites",
@@ -322,7 +322,7 @@ tab.classList.add('active');tab.setAttribute('aria-selected','true');
 const panel=document.getElementById('tab-'+tab.dataset.tab);
 panel.classList.add('active');
 // Reload data when switching to favorites tab
-if(tab.dataset.tab==='fav')loadFavs();
+if(tab.dataset.tab==='favs')loadFavs();
 });
 tab.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')tab.click()});
 });
@@ -393,7 +393,7 @@ const text=document.getElementById('ctxIn').value.trim();
 if(!text){showToast(t('describe'));return}
 const r=document.getElementById('ctxR');
 r.innerHTML='<div class="ld"><div class="sp"></div><p>'+t('generating')+'</p></div>';
-const d=await api('/api/jokes/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,count:1})});
+const d=await api('/api/jokes/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,count:1,language:LANG})});
 if(!d){r.innerHTML='<div class="em"><div class="ei">\ud83e\udd16</div><p>'+t('no_res')+'</p></div>';return}
 if(d.error){r.innerHTML='<div class="em"><div class="ei">\u26a0\ufe0f</div><p>'+esc(d.error)+'</p></div>';return}
 const mc=document.getElementById('mCats');
@@ -619,7 +619,7 @@ function vmScheduleSend(){
     const ctx=_vmCtx.map(e=>e.text).join(' ');
     vmLog(document.getElementById('vmLog'),'Finding joke for: "'+ctx.substring(0,60)+'..."');
     const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:ctx,count:3})},180000);
+body:JSON.stringify({text:ctx,count:3,language:LANG})},180000)
     if(!_vmRunning)return;
     const res=document.getElementById('vmRes');
     if(d&&d.jokes&&d.jokes.length){

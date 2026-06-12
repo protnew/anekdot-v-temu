@@ -1,4 +1,4 @@
-"""Anekdot v Temu — AI-powered contextual joke app v3.17.3
+"""Anekdot v Temu — AI-powered contextual joke app v3.17.4
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -105,7 +105,7 @@ def _build_joke_by_id():
 @asynccontextmanager
 async def lifespan(app):
     # Init asyncio locks (can't create before event loop)
-    global _rating_lock, _favorites_lock, _top_cache_lock
+    global _rating_lock, _favorites_lock, _history_lock, _top_cache_lock
     _rating_lock = asyncio.Lock()
     _favorites_lock = asyncio.Lock()
     _history_lock = asyncio.Lock()
@@ -146,7 +146,7 @@ async def lifespan(app):
         search_engine = None
     print(t("console.shutdown_complete"))
 
-app = FastAPI(title="Анекдот в тему", version="3.17.3", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.17.4", lifespan=lifespan)
 
 # Request logging middleware
 @app.middleware("http")
@@ -290,8 +290,6 @@ class SemanticSearchEngine:
 
     def _build_index(self):
         self.jokes = get_all_jokes()
-        # Include EN_JOKES in search index
-        self.jokes.extend([{**j, "category": f"en_{j.get('category', 'misc')}"} for j in EN_JOKES])
         if not self.jokes:
             return
         # Combine text + tags + category for matching
@@ -629,8 +627,7 @@ async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10,
         if not is_lang_match:
             joke["semantic_score"] = joke.get("semantic_score", 0) * 0.3
     results.sort(key=lambda x: x.get("semantic_score", 0), reverse=True)
-    total = len(results)
-    return {"jokes": results[:limit], "total": min(total, limit)}
+    return {"jokes": results[:limit], "total": len(results)}
 
 @app.post("/api/jokes/context")
 async def contextual_joke(request: JokeRequest):
@@ -805,6 +802,15 @@ async def rate_joke(request: RatingRequest):
                     # Schedule save (non-blocking)
                     _schedule_rating_save()
                     return {"new_rating": joke["rating"], "votes": votes}
+        # Check EN_JOKES (hardcoded, not in DB file)
+        for j in EN_JOKES:
+            if j["id"] == request.joke_id:
+                old = j.get("rating", 4.0)
+                votes = j.get("votes", 1) + 1
+                new = round((old * (votes - 1) + clamped) / votes, 1)
+                j["rating"] = min(max(new, 1.0), 5.0)
+                j["votes"] = votes
+                return {"new_rating": j["rating"], "votes": votes}
     raise HTTPException(status_code=404, detail=t("error.joke_not_found"))
 
 @app.get("/api/joke/random")
@@ -826,6 +832,10 @@ async def random_joke(category: Optional[str] = Query(None), lang: Optional[str]
     
     # Filter categories by language
     if lang == "en":
+        # Check EN_JOKES first
+        if EN_JOKES:
+            j = random.choice(EN_JOKES)
+            return {**j, "category": f"en_{j.get('category', 'misc')}"}
         cats = [c for c in cats if c.startswith("en_")]
     elif lang and lang != "ru":
         cats = [c for c in cats if c.startswith(f"{lang}_")]
@@ -1637,7 +1647,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": True
         },
-        "version": "3.17.3"
+        "version": "3.17.4"
     }
 
 # ============================================================
@@ -1712,5 +1722,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(t("console.starting", version="3.17.3", port=port))
+    print(t("console.starting", version="3.17.4", port=port))
     uvicorn.run(app, host="0.0.0.0", port=port)
