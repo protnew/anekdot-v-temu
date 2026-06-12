@@ -96,7 +96,7 @@ textarea::placeholder{color:var(--mut)}
 .ft{text-align:center;padding:16px;font-size:10px;color:var(--mut);border-top:1px solid var(--brd);margin-top:24px}
 @media(max-width:600px){.hd-in{flex-direction:column;align-items:flex-start}.mn{padding:12px 8px}.jc{padding:12px}.cg{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}.br{flex-direction:column}.btn{width:100%;justify-content:center}.sc{min-width:55px;padding:6px 4px}.sv{font-size:13px}}
 .vm-box{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px}
-.vm-hd{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.vm-hd{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
 .vm-dot{width:12px;height:12px;border-radius:50%;background:#ff3b3b;animation:vm-pulse 1s infinite}
 @keyframes vm-pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .bvm-start{background:var(--acc);color:#fff;font-size:14px;padding:10px 24px;border:none;border-radius:8px;cursor:pointer}
@@ -175,8 +175,8 @@ textarea::placeholder{color:var(--mut)}
 <div class="vm-hd">
 <button class="btn bvm-start" id="vmBtn">🎙️ <span data-i18n="vm_start">Listen</span></button>
 <span class="vm-dot" id="vmDot" style="display:none"></span>
-<button class="btn bs" onclick="document.getElementById('vmLog').innerHTML=''" data-i18n="vm_clear" style="margin-left:8px">Clear</button>
-<button class="btn bs" onclick="_vmCtx=[];vmLog(document.getElementById('vmLog'),t('vm_ctx_cleared')||'Context cleared')" data-i18n="vm_reset" style="margin-left:4px">Reset</button>
+<button class="btn bs bg" onclick="document.getElementById('vmLog').innerHTML=''" data-i18n="vm_clear" style="margin-left:8px">Clear</button>
+<button class="btn bs bg" onclick="_vmCtx=[];vmLog(document.getElementById('vmLog'),t('vm_ctx_cleared')||'Context cleared')" data-i18n="vm_reset" style="margin-left:4px">Reset</button>
 <label style="margin-left:auto;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="vmAutoTTS"> <span data-i18n="vm_autotts">Auto-play jokes</span></label>
 </div>
 <p class="vm-desc" data-i18n="vm_desc">Microphone listens to your conversation, recognizes speech and automatically finds matching jokes. Just press Listen and start talking!</p>
@@ -187,7 +187,7 @@ textarea::placeholder{color:var(--mut)}
 </div></div>
 <div class="tp" id="ttsP"><span>🔊</span><span class="tt" id="ttsT"></span><button class="btn bs bg" onclick="stopTTS()">■ <span data-i18n="b_stop">Stop</span></button><span class="tx" onclick="stopTTS()">×</span></div>
 <div class="toast" id="toast"></div>
-<div class="ft"><span data-i18n="title">Joke in Context</span> v3.17.0 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
+<div class="ft"><span data-i18n="title">Joke in Context</span> v3.17.1 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
 <script>
 const I18N={
 en:{title:"Joke in Context",sub:"AI CONTEXTUAL JOKES",s_jokes:"Jokes",s_cats:"Categories",s_avg:"Avg Rating",s_favs:"Favorites",
@@ -198,7 +198,7 @@ b_find:"Find Joke!",b_gen:"AI Generate",b_rnd:"Random joke!",b_srch:"Search",b_s
 cat_t:"Joke Categories",fav_t:"Favorite Jokes",srch_t:"Search Jokes",srch_ph:"Enter a word or phrase...",
 offline:"Server unavailable",loading:"Finding a joke...",generating:"Generating AI joke...",
 no_res:"Nothing found",no_fav:"No favorites yet. Click the heart!",
-copied:"Copied!",playing:"Playing...",err_tts:"TTS error",
+copied:"Copied!",playing:"Playing...",err_tts:"TTS error",err_rate:"Rating failed",
 j_count:"jokes",topics:"Topics:",found:"Found:",describe:"Describe a situation!",
 fun:"Funniness",off:"Offensiveness",clean:"Clean",
 fav_a:"Favorite",fav_r:"Favorited",
@@ -213,7 +213,7 @@ b_find:"Анекдот в тему!",b_gen:"AI-генерация",b_rnd:"Слу
 cat_t:"Категории",fav_t:"Избранные",srch_t:"Поиск",srch_ph:"Введите слово...",
 offline:"Сервер недоступен",loading:"Подбираю...",generating:"Генерирую...",
 no_res:"Ничего не найдено",no_fav:"Пока нет избранных.",
-copied:"Скопировано!",playing:"Воспроизвожу...",err_tts:"Ошибка TTS",
+copied:"Скопировано!",playing:"Воспроизвожу...",err_tts:"Ошибка TTS",err_rate:"Ошибка рейтинга",
 j_count:"анекдотов",topics:"Темы:",found:"Найдено:",
 describe:"Опишите ситуацию!",fun:"Смешность",off:"Обидность",clean:"Чистый",
 fav_a:"В избранное",fav_r:"В избранном",
@@ -227,7 +227,7 @@ b_find:"Buscar chiste!",b_gen:"Generar IA",b_rnd:"Aleatorio!",b_srch:"Buscar",b_
 cat_t:"Categorias",fav_t:"Favoritos",srch_t:"Buscar",srch_ph:"Palabra o frase...",
 offline:"Servidor no disponible",loading:"Buscando...",generating:"Generando...",
 no_res:"Nada encontrado",no_fav:"Sin favoritos",copied:"Copiado!",playing:"Reproduciendo...",
-err_tts:"Error TTS",j_count:"chistes",topics:"Temas:",found:"Encontrados:",
+err_tts:"Error TTS",err_rate:"Error de puntuacion",j_count:"chistes",topics:"Temas:",found:"Encontrados:",
 describe:"Describe una situacion!",fun:"Gracia",off:"Ofensivo",clean:"Limpio",
 fav_a:"Favorito",fav_r:"En favoritos",
 q_work:"Trabajo",q_it:"IT",q_fam:"Familia",q_mon:"Dinero",q_love:"Amor",q_hp:"Salud",q_ai:"IA",q_cat:"Gatos",
@@ -240,7 +240,7 @@ b_find:"Witz finden!",b_gen:"KI generieren",b_rnd:"Zufallswitz!",b_srch:"Suchen"
 cat_t:"Kategorien",fav_t:"Favoriten",srch_t:"Suchen",srch_ph:"Wort eingeben...",
 offline:"Server nicht erreichbar",loading:"Suche...",generating:"Generiere...",
 no_res:"Nichts gefunden",no_fav:"Keine Favoriten",copied:"Kopiert!",playing:"Abspielen...",
-err_tts:"TTS Fehler",j_count:"Witze",topics:"Themen:",found:"Gefunden:",
+err_tts:"TTS Fehler",err_rate:"Bewertungsfehler",j_count:"Witze",topics:"Themen:",found:"Gefunden:",
 describe:"Beschreibe eine Situation!",fun:"Witzig",off:"Beleidigend",clean:"Sicher",
 fav_a:"Favorit",fav_r:"In Favoriten",
 q_work:"Arbeit",q_it:"IT",q_fam:"Familie",q_mon:"Geld",q_love:"Liebe",q_hp:"Gesundheit",q_ai:"KI",q_cat:"Katzen",
@@ -253,7 +253,7 @@ b_find:"Trouver!",b_gen:"Generer IA",b_rnd:"Aleatoire!",b_srch:"Chercher",b_stop
 cat_t:"Categories",fav_t:"Favoris",srch_t:"Rechercher",srch_ph:"Mot ou phrase...",
 offline:"Serveur indisponible",loading:"Recherche...",generating:"Generation...",
 no_res:"Rien trouve",no_fav:"Pas de favoris",copied:"Copie!",playing:"Lecture...",
-err_tts:"Erreur TTS",j_count:"blagues",topics:"Themes:",found:"Trouves:",
+err_tts:"Erreur TTS",err_rate:"Erreur de note",j_count:"blagues",topics:"Themes:",found:"Trouves:",
 describe:"Decrivez une situation!",fun:"Drole",off:"Offensant",clean:"Correct",
 fav_a:"Favori",fav_r:"En favoris",
 q_work:"Travail",q_it:"IT",q_fam:"Famille",q_mon:"Argent",q_love:"Amour",q_hp:"Sante",q_ai:"IA",q_cat:"Chats",
@@ -266,7 +266,7 @@ b_find:"Encontrar!",b_gen:"Gerar IA",b_rnd:"Aleatoria!",b_srch:"Buscar",b_stop:"
 cat_t:"Categorias",fav_t:"Favoritos",srch_t:"Buscar",srch_ph:"Palavra ou frase...",
 offline:"Servidor indisponivel",loading:"Procurando...",generating:"Gerando...",
 no_res:"Nada encontrado",no_fav:"Sem favoritos",copied:"Copiado!",playing:"Tocando...",
-err_tts:"Erro TTS",j_count:"piadas",topics:"Temas:",found:"Encontrados:",
+err_tts:"Erro TTS",err_rate:"Erro de avaliacao",j_count:"piadas",topics:"Temas:",found:"Encontrados:",
 describe:"Descreva uma situacao!",fun:"Engracado",off:"Ofensivo",clean:"Limpo",
 fav_a:"Favorito",fav_r:"Nos favoritos",
 q_work:"Trabalho",q_it:"IT",q_fam:"Familia",q_mon:"Dinheiro",q_love:"Amor",q_hp:"Saude",q_ai:"IA",q_cat:"Gatos",
@@ -279,7 +279,7 @@ ctx_ph:"例如：坐在会议中...",
 b_find:"找笑话!",b_gen:"AI生成",b_rnd:"随机!",b_srch:"搜索",b_stop:"停止",
 cat_t:"笑话分类",fav_t:"收藏",srch_t:"搜索",srch_ph:"输入单词...",
 offline:"服务器不可用",loading:"找笑话...",generating:"AI生成...",
-no_res:"没找到",no_fav:"还没有收藏",copied:"已复制!",playing:"播放...",err_tts:"TTS错误",
+no_res:"没找到",no_fav:"还没有收藏",copied:"已复制!",playing:"播放...",err_tts:"TTS错误",err_rate:"评分失败",
 j_count:"笑话",topics:"主题:",found:"找到:",
 describe:"描述场景!",fun:"搞笑",off:"冒犯",clean:"无害",
 fav_a:"收藏",fav_r:"已收藏",
@@ -427,31 +427,41 @@ if(_fJ&&_fJ.length)el.innerHTML=_fJ.map(j=>rCard(j)).join('');
 else el.innerHTML='<div class="em"><div class="ei">\u2764\ufe0f</div><p>'+t('no_fav')+'</p></div>';
 }
 
+let _favLock=false;
 async function togFav(id,btn){
+if(_favLock)return;_favLock=true;
+try{
 const is=favs.includes(id);
-if(is){await api('/api/favorites/'+id,{method:'DELETE'});favs=favs.filter(f=>f!==id);_fJ=_fJ.filter(j=>j.id!==id);
+let ok;
+if(is){ok=await api('/api/favorites/'+id,{method:'DELETE'})}
+else{ok=await api('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({joke_id:id})})}
+if(ok===null){showToast(t('err_tts')||'Error');return}
+if(is){favs=favs.filter(f=>f!==id);_fJ=_fJ.filter(j=>j.id!==id);
 btn.classList.remove('fo');btn.innerHTML='\ud83e\ude75 '+t('fav_a')}
-else{await api('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({joke_id:id})});
-favs.push(id);btn.classList.add('fo');btn.innerHTML='\u2764\ufe0f '+t('fav_r')}
-loadStats();
+else{favs.push(id);btn.classList.add('fo');btn.innerHTML='\u2764\ufe0f '+t('fav_r')}
+loadStats();renderFavs();
+}finally{_favLock=false}
 }
 
 function rCard(j){
-const is=favs.includes(j.id);
-const fn=j.funniness!=null?j.funniness:Math.round((j.rating||3.5)*10)/10;
-const of=j.offensiveness!=null?j.offensiveness:Math.round((j.rating?5.5-(j.rating):1.5)*10)/10;
-const cb=of<=2.0?'<span class="bd bdc">\u2713 '+t('clean')+'</span>':'';
+if(!j||!j.text)return '';
+const id=j.id||0;
+const is=favs.includes(id);
+const fn=j.funniness!=null?j.funniness:Math.round(((j.rating||3.5))*10)/10;
+const ofv=j.offensiveness!=null?j.offensiveness:Math.round((j.rating!=null?5.5-j.rating:1.5)*10)/10;
+const cb=ofv<=2.0?'<span class="bd bdc">\u2713 '+t('clean')+'</span>':'';
 const sb=j.semantic_score?'<span class="bd bds">\ud83c\udfaf '+Math.round(j.semantic_score*100)+'%</span>':'';
 const gb=j.generated?'<span class="bd bdg">\ud83e\udd16 AI</span>':'';
 let sh='';const sc=Math.max(0,Math.min(5,Math.round(fn)));
-for(let i=1;i<=5;i++)sh+='<span class="st '+(i<=sc?'on':'off')+'" data-jid="'+j.id+'" data-val="'+i+'">\u2605</span>';
-const oc=of<=2?'var(--grn)':of<=3.5?'var(--org)':'var(--red)';
+for(let i=1;i<=5;i++)sh+='<span class="st '+(i<=sc?'on':'off')+'" data-jid="'+id+'" data-val="'+i+'">\u2605</span>';
+const oc=ofv<=2?'var(--grn)':ofv<=3.5?'var(--org)':'var(--red)';
+const cat=j.category||'';
 return '<div class="jc"><div class="jt">'+esc(j.text)+'</div>'+
-'<div class="jm"><span class="jcat">'+ge(j.category)+' '+esc(j.category)+'</span><div class="jb">'+cb+sb+gb+'</div></div>'+
+'<div class="jm"><span class="jcat">'+ge(cat)+' '+esc(cat)+'</span><div class="jb">'+cb+sb+gb+'</div></div>'+
 '<div class="rr"><span class="rl">'+t('fun')+'</span><div class="sts">'+sh+'</div><span class="rv">'+fn.toFixed(1)+'/5</span>'+
-'&nbsp;&nbsp;<span class="rl">'+t('off')+'</span><span style="color:'+oc+';font-weight:700;font-size:12px">'+of.toFixed(1)+'/5</span></div>'+
+'&nbsp;&nbsp;<span class="rl">'+t('off')+'</span><span style="color:'+oc+';font-weight:700;font-size:12px">'+ofv.toFixed(1)+'/5</span></div>'+
 '<div class="ja">'+
-'<button class="ab '+(is?'fo':'')+'" onclick="togFav('+j.id+',this)">'+(is?'\u2764\ufe0f '+t('fav_r'):'\ud83e\ude75 '+t('fav_a'))+'</button>'+
+'<button class="ab '+(is?'fo':'')+'" onclick="togFav('+id+',this)">'+(is?'\u2764\ufe0f '+t('fav_r'):'\ud83e\ude75 '+t('fav_a'))+'</button>'+
 '<button class="ab cpb">\ud83d\udccb</button>'+
 '<button class="ab spb">\ud83d\udd0a</button>'+
 '</div></div>';
@@ -469,7 +479,7 @@ const sb=e.target.closest('.spb');if(sb){speakJ(sb)}
 
 async function rateJ(jid,val){
 const r=await api('/api/rate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({joke_id:jid,rating:val})});
-if(r){showToast('⭐ '+val+'/5');loadStats()}else{showToast(t('err_tts')||'Error')}
+if(r){showToast('⭐ '+val+'/5');loadStats()}else{showToast(t('err_rate')||'Error')}
 }
 
 function stopTTS(){
@@ -483,6 +493,7 @@ if(!text||!text.trim())return;
 if(curAudio){stopTTS()}
 try{
 const r=await fetch(API+'/api/voice/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text.substring(0,2000)})});
+if(!r.ok)return;
 const d=await r.json();
 if(d.error||!d.audio_file)return;
 const a=new Audio(API+d.audio_file);curAudio=a;
@@ -498,6 +509,7 @@ if(!tx)return;if(curAudio){stopTTS();return}
 btn.classList.add('pl');btn.innerHTML='\u23f3';
 try{
 const r=await fetch(API+'/api/voice/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:tx})});
+if(!r.ok){showToast(t('err_tts'));btn.classList.remove('pl');btn.innerHTML='\ud83d\udd0a';return}
 const d=await r.json();
 if(d.error||!d.audio_file){showToast(t('err_tts')+': '+(d.error||''));btn.classList.remove('pl');btn.innerHTML='\ud83d\udd0a';return}
 const a=new Audio(API+d.audio_file);curAudio=a;
@@ -547,6 +559,8 @@ function vmStop(){
   const btn=document.getElementById('vmBtn');
   const dot=document.getElementById('vmDot');
   if(_vmSendTimer){clearTimeout(_vmSendTimer);_vmSendTimer=null}
+  // flush remaining audio chunks before stopping
+  if(_vmChunks.length){vmProcessChunk()}
   if(_vmRecorder&&_vmRecorder.state!=='inactive')_vmRecorder.stop();
   if(_vmStream){_vmStream.getTracks().forEach(t=>t.stop());_vmStream=null}
   const span=btn.querySelector('span');
@@ -592,6 +606,7 @@ function vmScheduleSend(){
   if(!_vmRunning)return;
   _vmSendTimer=setTimeout(async()=>{
     if(!_vmRunning)return;
+    try{
     await vmProcessChunk();
     if(!_vmCtx.length){vmScheduleSend();return}
     const ctx=_vmCtx.map(e=>e.text).join(' ');
@@ -609,6 +624,7 @@ function vmScheduleSend(){
     }else{
       vmLog(document.getElementById('vmLog'),'No matching jokes');
     }
+    }catch(e){vmLog(document.getElementById('vmLog'),'Error: '+(e.message||e))}
     vmScheduleSend();
   },VM_SEND_SEC*1000);
 }

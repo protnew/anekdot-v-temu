@@ -1,4 +1,4 @@
-"""Anekdot v Temu — AI-powered contextual joke app v3.17.0
+"""Anekdot v Temu — AI-powered contextual joke app v3.17.1
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -25,6 +25,8 @@ log = logging.getLogger("anekdot")
 
 # Language prefix map — shared between search and context endpoints
 _LANG_PREFIX_MAP = {"ru": "", "en": "en_", "es": "es_", "de": "de_", "fr": "fr_", "pt": "pt_", "zh": "zh_", "ja": "ja_", "ar": "ar_", "hi": "hi_"}
+# All non-Russian language prefixes — used for language-aware search scoring
+_FOREIGN_PREFIXES = tuple(v for v in _LANG_PREFIX_MAP.values() if v)
 
 
 async def _run_subprocess(args, timeout=30):
@@ -142,7 +144,7 @@ async def lifespan(app):
         search_engine = None
     print(t("console.shutdown_complete"))
 
-app = FastAPI(title="Анекдот в тему", version="3.17.0", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.17.1", lifespan=lifespan)
 
 # Request logging middleware
 @app.middleware("http")
@@ -185,10 +187,10 @@ def load_jokes():
         try:
             _jokes_cache = json.load(f)
         except json.JSONDecodeError as e:
-            logger.error("Corrupted jokes_db.json: %s — keeping previous cache", e)
+            log.error("Corrupted jokes_db.json: %s — keeping previous cache", e)
             if _jokes_cache is not None:
                 return _jokes_cache
-            logger.error("No previous cache, returning empty dict")
+            log.error("No previous cache, returning empty dict")
             return {}
     _jokes_cache_mtime = mtime
     return _jokes_cache
@@ -205,8 +207,9 @@ _last_save_time = 0
 
 def _schedule_rating_save():
     """Mark ratings for save on next load or shutdown."""
-    global _pending_rating_save, _last_save_time
+    global _pending_rating_save, _last_save_time, _joke_by_id_built
     _pending_rating_save = True
+    _joke_by_id_built = False  # force rebuild to pick up rating changes
 
 def load_json(path, default):
     if path.exists():
@@ -612,7 +615,7 @@ async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10,
     for joke in results:
         cat = joke.get("category", "")
         if prefer_prefix == "":
-            is_lang_match = not any(cat.startswith(p) for p in ["en_", "es_", "de_", "fr_", "pt_", "zh_"])
+            is_lang_match = not any(cat.startswith(p) for p in _FOREIGN_PREFIXES)
         else:
             is_lang_match = cat.startswith(prefer_prefix)
         if not is_lang_match:
@@ -640,7 +643,7 @@ async def contextual_joke(request: JokeRequest):
         cat = joke.get("category", "")
         if prefer_prefix == "":
             # Russian: prefer non-prefixed categories
-            is_lang_match = not any(cat.startswith(p) for p in ["en_", "es_", "de_", "fr_", "pt_", "zh_"])
+            is_lang_match = not any(cat.startswith(p) for p in _FOREIGN_PREFIXES)
         else:
             is_lang_match = cat.startswith(prefer_prefix)
         if not is_lang_match:
@@ -1623,9 +1626,9 @@ async def get_stats():
             "multi_language": True,
             "pwa": True,
             "alice_skill": True,
-            "voice": False  # stub only
+            "voice": True
         },
-        "version": "3.17.0"
+        "version": "3.17.1"
     }
 
 # ============================================================
@@ -1700,5 +1703,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(t("console.starting", version="3.17.0", port=port))
+    print(t("console.starting", version="3.17.1", port=port))
     uvicorn.run(app, host="0.0.0.0", port=port)
