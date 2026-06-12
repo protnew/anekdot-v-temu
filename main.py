@@ -1,4 +1,4 @@
-"""Anekdot v Temu — AI-powered contextual joke app v3.17.2
+"""Anekdot v Temu — AI-powered contextual joke app v3.17.3
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -76,6 +76,7 @@ _rate_limiter = RateLimiter(60, 60)
 # ============================================================
 _rating_lock = None
 _favorites_lock = None
+_history_lock = None
 
 # ============================================================
 # Top jokes cache (TTL 5 minutes)
@@ -107,6 +108,7 @@ async def lifespan(app):
     global _rating_lock, _favorites_lock, _top_cache_lock
     _rating_lock = asyncio.Lock()
     _favorites_lock = asyncio.Lock()
+    _history_lock = asyncio.Lock()
     _top_cache_lock = asyncio.Lock()
     # Startup
     import asyncio as _asyncio
@@ -144,7 +146,7 @@ async def lifespan(app):
         search_engine = None
     print(t("console.shutdown_complete"))
 
-app = FastAPI(title="Анекдот в тему", version="3.17.2", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.17.3", lifespan=lifespan)
 
 # Request logging middleware
 @app.middleware("http")
@@ -213,8 +215,11 @@ def _schedule_rating_save():
 
 def load_json(path, default):
     if path.exists():
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            log.error("Failed to load %s: %s — using default", path, e)
     return default
 
 def save_json(path, data):
@@ -236,6 +241,9 @@ def get_all_jokes():
     for category, items in db.items():
         for joke in items:
             jokes.append({**joke, "category": category})
+    # Include hardcoded English jokes
+    for j in EN_JOKES:
+        jokes.append({**j, "category": f"en_{j.get('category', 'misc')}"})
     return jokes
 
 # ============================================================
@@ -621,7 +629,8 @@ async def search_jokes(q: str = Query(..., min_length=2), limit: int = Query(10,
         if not is_lang_match:
             joke["semantic_score"] = joke.get("semantic_score", 0) * 0.3
     results.sort(key=lambda x: x.get("semantic_score", 0), reverse=True)
-    return {"jokes": results[:limit], "total": len(results)}
+    total = len(results)
+    return {"jokes": results[:limit], "total": min(total, limit)}
 
 @app.post("/api/jokes/context")
 async def contextual_joke(request: JokeRequest):
@@ -676,16 +685,17 @@ async def contextual_joke(request: JokeRequest):
     top_candidates = semantic_results[:request.count * 3]
     selected = random.sample(top_candidates, min(request.count, len(top_candidates)))
     
-    # Save to history
-    history = load_json(HISTORY_FILE, [])
-    for joke in selected:
-        history.append({
-            "joke_id": joke["id"],
-            "context": request.text,
-            "category": joke["category"],
-            "score": joke.get("semantic_score", 0)
-        })
-    await asyncio.to_thread(save_json, HISTORY_FILE, history[-100:])
+    # Save to history (with lock to prevent TOCTOU race)
+    async with _history_lock:
+        history = await asyncio.to_thread(load_json, HISTORY_FILE, [])
+        for joke in selected:
+            history.append({
+                "joke_id": joke["id"],
+                "context": request.text,
+                "category": joke["category"],
+                "score": joke.get("semantic_score", 0)
+            })
+        await asyncio.to_thread(save_json, HISTORY_FILE, history[-100:])
     
     return {
         "jokes": selected,
@@ -1627,7 +1637,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": True
         },
-        "version": "3.17.2"
+        "version": "3.17.3"
     }
 
 # ============================================================
@@ -1702,5 +1712,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(t("console.starting", version="3.17.2", port=port))
+    print(t("console.starting", version="3.17.3", port=port))
     uvicorn.run(app, host="0.0.0.0", port=port)
