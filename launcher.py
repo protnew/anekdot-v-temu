@@ -30,7 +30,7 @@ def stop_all():
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "full"
     
-    print("😂 Joke on Topic v3.1 — Launcher")
+    print("😂 Joke on Topic v3.18.0 — Launcher")
     print("=" * 50)
     print(f"Mode: {mode}")
     print()

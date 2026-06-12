@@ -1,4 +1,4 @@
-"""Anekdot v Temu — AI-powered contextual joke app v3.17.4
+"""Anekdot v Temu — AI-powered contextual joke app v3.18.0
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -112,6 +112,7 @@ async def lifespan(app):
     _top_cache_lock = asyncio.Lock()
     # Startup
     import asyncio as _asyncio
+
     async def _flush_loop():
         global _pending_rating_save, _last_save_time
         while True:
@@ -124,11 +125,40 @@ async def lifespan(app):
                         _last_save_time = time.time()
                         global _jokes_cache_mtime
                         _jokes_cache_mtime = JOKES_FILE.stat().st_mtime
-                        print(t("console.periodic_flush"))
+                        log.info(t("console.periodic_flush"))
                     except Exception as e:
-                        print(t("console.rating_flush_error", error=str(e)))
+                        log.error(t("console.rating_flush_error", error=str(e)))
+
+    async def _tts_cleanup_loop():
+        """Delete TTS MP3 files older than 24 hours (runs every 30 minutes)."""
+        while True:
+            await _asyncio.sleep(1800)  # 30 minutes
+            try:
+                tts_dir = BASE_DIR / "data" / "tts"
+                if not tts_dir.exists():
+                    continue
+                cutoff = time.time() - 86400  # 24 hours
+                removed = 0
+                for f in tts_dir.iterdir():
+                    if f.is_file() and f.suffix == ".mp3" and f.stat().st_mtime < cutoff:
+                        f.unlink()
+                        removed += 1
+                if removed:
+                    log.info("TTS cleanup: removed %d old files", removed)
+            except Exception as e:
+                log.error("TTS cleanup error: %s", e)
+
+    async def _build_index_background():
+        """Build TF-IDF index in background thread at startup."""
+        try:
+            await _asyncio.to_thread(_get_search_engine)
+        except Exception as e:
+            log.error("Background index build failed: %s", e)
+
     global _flush_task
     _flush_task = _asyncio.create_task(_flush_loop())
+    _asyncio.create_task(_tts_cleanup_loop())
+    _asyncio.create_task(_build_index_background())
     yield
     # Shutdown: cancel flush task
     if _flush_task and not _flush_task.done():
@@ -139,14 +169,14 @@ async def lifespan(app):
         if _pending_rating_save and _jokes_cache is not None:
             await _asyncio.to_thread(save_json, JOKES_FILE, _jokes_cache)
             _jokes_cache_mtime = JOKES_FILE.stat().st_mtime
-            print(t("console.ratings_saved"))
+            log.info(t("console.ratings_saved"))
     # Save TF-IDF search engine state if loaded
     if search_engine is not None:
-        print(t("console.search_released"))
+        log.info(t("console.search_released"))
         search_engine = None
-    print(t("console.shutdown_complete"))
+    log.info(t("console.shutdown_complete"))
 
-app = FastAPI(title="Анекдот в тему", version="3.17.4", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.18.0", lifespan=lifespan)
 
 # Request logging middleware
 @app.middleware("http")
@@ -165,6 +195,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Reject requests with Content-Length > 10MB
+@app.middleware("http")
+async def body_size_limit(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > 10 * 1024 * 1024:
+        return HTMLResponse(
+            content=json.dumps({"detail": "Request body too large (max 10MB)"}),
+            status_code=413,
+            media_type="application/json"
+        )
+    return await call_next(request)
+
 # Paths
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
@@ -177,6 +219,7 @@ HISTORY_FILE = DATA_DIR / "history.json"
 # ============================================================
 _jokes_cache = None
 _jokes_cache_mtime = 0
+_all_jokes_cache = None
 
 def load_jokes():
     global _jokes_cache, _jokes_cache_mtime
@@ -198,10 +241,11 @@ def load_jokes():
     return _jokes_cache
 
 def _invalidate_jokes_cache():
-    global _jokes_cache, _joke_by_id, _joke_by_id_built
+    global _jokes_cache, _joke_by_id, _joke_by_id_built, _all_jokes_cache
     _jokes_cache = None
     _joke_by_id = {}
     _joke_by_id_built = False
+    _all_jokes_cache = None  # Invalidate all-jokes cache too
 
 # Periodic save for ratings (non-blocking)
 _pending_rating_save = False
@@ -229,13 +273,16 @@ def save_json(path, data):
     fd, tmp = tempfile.mkstemp(dir=dir_path, suffix='.tmp')
     try:
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
         os.replace(tmp, str(path))
     except Exception:
         os.unlink(tmp) if os.path.exists(tmp) else None
         raise
 
 def get_all_jokes():
+    global _all_jokes_cache
+    if _all_jokes_cache is not None:
+        return _all_jokes_cache
     db = load_jokes()
     jokes = []
     for category, items in db.items():
@@ -244,6 +291,7 @@ def get_all_jokes():
     # Include hardcoded English jokes
     for j in EN_JOKES:
         jokes.append({**j, "category": f"en_{j.get('category', 'misc')}"})
+    _all_jokes_cache = jokes
     return jokes
 
 # ============================================================
@@ -326,20 +374,20 @@ class SemanticSearchEngine:
         }
 
 
-# Lazy search engine: build TF-IDF on first request
-# Server starts instantly instead of 60-90s wait
+# Lazy search engine: build TF-IDF on first request or at startup
 search_engine = None
-_search_engine_lock = threading.Lock()
+_index_status = "not_loaded"  # "not_loaded" | "building" | "ready"
 
 def _get_search_engine():
-    global search_engine
-    if search_engine is None:
-        with _search_engine_lock:
-            # Double-check after acquiring lock
-            if search_engine is None:
-                print(t("console.building_index"))
-                search_engine = SemanticSearchEngine()
-                print(t("console.indexed", count=len(search_engine.jokes), vocab=search_engine.get_stats()['vocabulary_size']))
+    global search_engine, _index_status
+    if search_engine is not None:
+        return search_engine
+    # Build synchronously (called via asyncio.to_thread from routes or lifespan)
+    log.info(t("console.building_index"))
+    _index_status = "building"
+    search_engine = SemanticSearchEngine()
+    _index_status = "ready"
+    log.info(t("console.indexed", count=len(search_engine.jokes), vocab=search_engine.get_stats()['vocabulary_size']))
     return search_engine
 
 # ============================================================
@@ -541,18 +589,26 @@ class FavoriteRequest(BaseModel):
 class RatingRequest(BaseModel):
     joke_id: int
     rating: float
-    
-    def validate_rating(self):
+
+    @field_validator('rating')
+    @classmethod
+    def validate_rating(cls, v: float) -> float:
         import math
-        if math.isnan(self.rating) or math.isinf(self.rating):
-            raise HTTPException(status_code=400, detail=t("error.rating_range"))
-        if self.rating < 1 or self.rating > 5:
-            raise HTTPException(status_code=400, detail=t("error.rating_range"))
-        return min(max(self.rating, 1.0), 5.0)
+        if math.isnan(v) or math.isinf(v):
+            raise ValueError(t("error.rating_range"))
+        if v < 1 or v > 5:
+            raise ValueError(t("error.rating_range"))
+        return min(max(v, 1.0), 5.0)
 
 # ============================================================
 # API routes
 # ============================================================
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok", "version": "3.18.0"}
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     """#14: Simple rate limiter — 60 req/min per IP."""
@@ -568,20 +624,6 @@ async def index():
     html_path = BASE_DIR / "static" / "index.html"
     if not html_path.exists():
         raise HTTPException(404, "index.html not found")
-    return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
-
-@app.get("/logs", response_class=HTMLResponse)
-async def logs_page():
-    html_path = BASE_DIR / "static" / "logs.html"
-    if not html_path.exists():
-        raise HTTPException(404, "logs.html not found")
-    return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
-
-@app.get("/emulator", response_class=HTMLResponse)
-async def emulator_page():
-    html_path = BASE_DIR / "static" / "emulator.html"
-    if not html_path.exists():
-        raise HTTPException(404, "emulator.html not found")
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 @app.get("/api/categories")
@@ -787,21 +829,28 @@ async def get_favorites(user_id: str = "default"):
 
 @app.post("/api/rate")
 async def rate_joke(request: RatingRequest):
-    clamped = request.validate_rating()
+    clamped = request.rating  # Already validated by field_validator
     async with _rating_lock:
         db = load_jokes()  # Uses cache, fast after first call
-        for category, jokes in db.items():
-            for joke in jokes:
-                if joke["id"] == request.joke_id:
-                    old = joke.get("rating", 4.0)
-                    # Weighted average with confidence
-                    votes = joke.get("votes", 1) + 1
-                    new = round((old * (votes - 1) + clamped) / votes, 1)
-                    joke["rating"] = min(max(new, 1.0), 5.0)
-                    joke["votes"] = votes
-                    # Schedule save (non-blocking)
-                    _schedule_rating_save()
-                    return {"new_rating": joke["rating"], "votes": votes}
+        # Use O(1) joke-by-id lookup instead of linear scan
+        _build_joke_by_id()
+        joke = _joke_by_id.get(request.joke_id)
+        if joke:
+            old = joke.get("rating", 4.0)
+            votes = joke.get("votes", 1) + 1
+            new = round((old * (votes - 1) + clamped) / votes, 1)
+            joke["rating"] = min(max(new, 1.0), 5.0)
+            joke["votes"] = votes
+            # Also update the joke in the main db (in-memory dict)
+            cat = joke.get("category", "")
+            if cat in db:
+                for j in db[cat]:
+                    if j["id"] == request.joke_id:
+                        j["rating"] = joke["rating"]
+                        j["votes"] = votes
+                        break
+            _schedule_rating_save()
+            return {"new_rating": joke["rating"], "votes": votes}
         # Check EN_JOKES (hardcoded, not in DB file)
         for j in EN_JOKES:
             if j["id"] == request.joke_id:
@@ -912,6 +961,9 @@ def init_db():
             request_count INTEGER DEFAULT 0,
             last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics(created_at);
+        CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics(event_type);
+        CREATE INDEX IF NOT EXISTS idx_user_jokes_approved ON user_jokes(approved);
     """)
         conn.commit()
     finally:
@@ -989,6 +1041,23 @@ async def delete_user_joke(joke_id: int):
     finally:
         conn.close()
     return {"status": t("status.deleted")}
+
+@app.patch("/api/user-jokes/{joke_id}/approve")
+async def approve_user_joke(joke_id: int, admin_key: str = Query(...)):
+    """Approve a user-submitted joke. Requires admin_key query parameter."""
+    expected_key = os.environ.get("ADMIN_KEY", "")
+    if not expected_key or admin_key != expected_key:
+        raise HTTPException(status_code=403, detail="Invalid admin_key")
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT id FROM user_jokes WHERE id = ?", (joke_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=t("error.joke_not_found"))
+        conn.execute("UPDATE user_jokes SET approved = 1 WHERE id = ?", (joke_id,))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"status": "approved", "joke_id": joke_id}
 
 # ============================================================
 # #26: Personalization
@@ -1634,6 +1703,7 @@ async def get_stats():
         "history_count": len(history),
         "avg_rating": round(avg_rating, 1),
         "vocabulary_size": sem_stats["vocabulary_size"],
+        "index_status": _index_status,
         "llm_available": get_openai_client() is not None,
         "features": {
             "semantic_search": True,
@@ -1647,7 +1717,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": True
         },
-        "version": "3.17.4"
+        "version": "3.18.0"
     }
 
 # ============================================================
@@ -1667,16 +1737,6 @@ async def desktop_page():
     if desktop_path.exists():
         return desktop_path.read_text(encoding="utf-8")
     raise HTTPException(404, t("error.desktop_not_found"))
-
-# ============================================================
-# Flutter Web app
-# ============================================================
-@app.get("/flutter", response_class=HTMLResponse)
-async def flutter_app():
-    flutter_index = BASE_DIR / "static" / "flutter" / "index.html"
-    if flutter_index.exists():
-        return flutter_index.read_text(encoding="utf-8")
-    raise HTTPException(404, t("error.flutter_not_found"))
 
 # Mount static files
 from fastapi.staticfiles import StaticFiles
@@ -1722,5 +1782,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(t("console.starting", version="3.17.4", port=port))
+    print(t("console.starting", version="3.18.0", port=port))
     uvicorn.run(app, host="0.0.0.0", port=port)
