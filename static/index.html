@@ -187,7 +187,7 @@ textarea::placeholder{color:var(--mut)}
 </div></div>
 <div class="tp" id="ttsP"><span>🔊</span><span class="tt" id="ttsT"></span><button class="btn bs bg" onclick="stopTTS()">■ <span data-i18n="b_stop">Stop</span></button><span class="tx" onclick="stopTTS()">×</span></div>
 <div class="toast" id="toast"></div>
-<div class="ft"><span data-i18n="title">Joke in Context</span> v3.17.1 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
+<div class="ft"><span data-i18n="title">Joke in Context</span> v3.17.2 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
 <script>
 const I18N={
 en:{title:"Joke in Context",sub:"AI CONTEXTUAL JOKES",s_jokes:"Jokes",s_cats:"Categories",s_avg:"Avg Rating",s_favs:"Favorites",
@@ -198,7 +198,7 @@ b_find:"Find Joke!",b_gen:"AI Generate",b_rnd:"Random joke!",b_srch:"Search",b_s
 cat_t:"Joke Categories",fav_t:"Favorite Jokes",srch_t:"Search Jokes",srch_ph:"Enter a word or phrase...",
 offline:"Server unavailable",loading:"Finding a joke...",generating:"Generating AI joke...",
 no_res:"Nothing found",no_fav:"No favorites yet. Click the heart!",
-copied:"Copied!",playing:"Playing...",err_tts:"TTS error",err_rate:"Rating failed",
+copied:"Copied!",playing:"Playing...",err_tts:"TTS error",err_rate:"Rating failed",err_fav:"Favorite error",
 j_count:"jokes",topics:"Topics:",found:"Found:",describe:"Describe a situation!",
 fun:"Funniness",off:"Offensiveness",clean:"Clean",
 fav_a:"Favorite",fav_r:"Favorited",
@@ -213,7 +213,7 @@ b_find:"Анекдот в тему!",b_gen:"AI-генерация",b_rnd:"Слу
 cat_t:"Категории",fav_t:"Избранные",srch_t:"Поиск",srch_ph:"Введите слово...",
 offline:"Сервер недоступен",loading:"Подбираю...",generating:"Генерирую...",
 no_res:"Ничего не найдено",no_fav:"Пока нет избранных.",
-copied:"Скопировано!",playing:"Воспроизвожу...",err_tts:"Ошибка TTS",err_rate:"Ошибка рейтинга",
+copied:"Скопировано!",playing:"Воспроизвожу...",err_tts:"Ошибка TTS",err_rate:"Ошибка рейтинга",err_fav:"Ошибка избранного",
 j_count:"анекдотов",topics:"Темы:",found:"Найдено:",
 describe:"Опишите ситуацию!",fun:"Смешность",off:"Обидность",clean:"Чистый",
 fav_a:"В избранное",fav_r:"В избранном",
@@ -227,7 +227,7 @@ b_find:"Buscar chiste!",b_gen:"Generar IA",b_rnd:"Aleatorio!",b_srch:"Buscar",b_
 cat_t:"Categorias",fav_t:"Favoritos",srch_t:"Buscar",srch_ph:"Palabra o frase...",
 offline:"Servidor no disponible",loading:"Buscando...",generating:"Generando...",
 no_res:"Nada encontrado",no_fav:"Sin favoritos",copied:"Copiado!",playing:"Reproduciendo...",
-err_tts:"Error TTS",err_rate:"Error de puntuacion",j_count:"chistes",topics:"Temas:",found:"Encontrados:",
+err_tts:"Error TTS",err_rate:"Error de puntuacion",err_fav:"Error de favorito",j_count:"chistes",topics:"Temas:",found:"Encontrados:",
 describe:"Describe una situacion!",fun:"Gracia",off:"Ofensivo",clean:"Limpio",
 fav_a:"Favorito",fav_r:"En favoritos",
 q_work:"Trabajo",q_it:"IT",q_fam:"Familia",q_mon:"Dinero",q_love:"Amor",q_hp:"Salud",q_ai:"IA",q_cat:"Gatos",
@@ -240,7 +240,7 @@ b_find:"Witz finden!",b_gen:"KI generieren",b_rnd:"Zufallswitz!",b_srch:"Suchen"
 cat_t:"Kategorien",fav_t:"Favoriten",srch_t:"Suchen",srch_ph:"Wort eingeben...",
 offline:"Server nicht erreichbar",loading:"Suche...",generating:"Generiere...",
 no_res:"Nichts gefunden",no_fav:"Keine Favoriten",copied:"Kopiert!",playing:"Abspielen...",
-err_tts:"TTS Fehler",err_rate:"Bewertungsfehler",j_count:"Witze",topics:"Themen:",found:"Gefunden:",
+err_tts:"TTS Fehler",err_rate:"Bewertungsfehler",err_fav:"Favoritenfehler",j_count:"Witze",topics:"Themen:",found:"Gefunden:",
 describe:"Beschreibe eine Situation!",fun:"Witzig",off:"Beleidigend",clean:"Sicher",
 fav_a:"Favorit",fav_r:"In Favoriten",
 q_work:"Arbeit",q_it:"IT",q_fam:"Familie",q_mon:"Geld",q_love:"Liebe",q_hp:"Gesundheit",q_ai:"KI",q_cat:"Katzen",
@@ -253,7 +253,7 @@ b_find:"Trouver!",b_gen:"Generer IA",b_rnd:"Aleatoire!",b_srch:"Chercher",b_stop
 cat_t:"Categories",fav_t:"Favoris",srch_t:"Rechercher",srch_ph:"Mot ou phrase...",
 offline:"Serveur indisponible",loading:"Recherche...",generating:"Generation...",
 no_res:"Rien trouve",no_fav:"Pas de favoris",copied:"Copie!",playing:"Lecture...",
-err_tts:"Erreur TTS",err_rate:"Erreur de note",j_count:"blagues",topics:"Themes:",found:"Trouves:",
+err_tts:"Erreur TTS",err_rate:"Erreur de note",err_fav:"Erreur de favori",j_count:"blagues",topics:"Themes:",found:"Trouves:",
 describe:"Decrivez une situation!",fun:"Drole",off:"Offensant",clean:"Correct",
 fav_a:"Favori",fav_r:"En favoris",
 q_work:"Travail",q_it:"IT",q_fam:"Famille",q_mon:"Argent",q_love:"Amour",q_hp:"Sante",q_ai:"IA",q_cat:"Chats",
@@ -266,7 +266,7 @@ b_find:"Encontrar!",b_gen:"Gerar IA",b_rnd:"Aleatoria!",b_srch:"Buscar",b_stop:"
 cat_t:"Categorias",fav_t:"Favoritos",srch_t:"Buscar",srch_ph:"Palavra ou frase...",
 offline:"Servidor indisponivel",loading:"Procurando...",generating:"Gerando...",
 no_res:"Nada encontrado",no_fav:"Sem favoritos",copied:"Copiado!",playing:"Tocando...",
-err_tts:"Erro TTS",err_rate:"Erro de avaliacao",j_count:"piadas",topics:"Temas:",found:"Encontrados:",
+err_tts:"Erro TTS",err_rate:"Erro de avaliacao",err_fav:"Erro de favorito",j_count:"piadas",topics:"Temas:",found:"Encontrados:",
 describe:"Descreva uma situacao!",fun:"Engracado",off:"Ofensivo",clean:"Limpo",
 fav_a:"Favorito",fav_r:"Nos favoritos",
 q_work:"Trabalho",q_it:"IT",q_fam:"Familia",q_mon:"Dinheiro",q_love:"Amor",q_hp:"Saude",q_ai:"IA",q_cat:"Gatos",
@@ -279,7 +279,7 @@ ctx_ph:"例如：坐在会议中...",
 b_find:"找笑话!",b_gen:"AI生成",b_rnd:"随机!",b_srch:"搜索",b_stop:"停止",
 cat_t:"笑话分类",fav_t:"收藏",srch_t:"搜索",srch_ph:"输入单词...",
 offline:"服务器不可用",loading:"找笑话...",generating:"AI生成...",
-no_res:"没找到",no_fav:"还没有收藏",copied:"已复制!",playing:"播放...",err_tts:"TTS错误",err_rate:"评分失败",
+no_res:"没找到",no_fav:"还没有收藏",copied:"已复制!",playing:"播放...",err_tts:"TTS错误",err_rate:"评分失败",err_fav:"收藏失败",
 j_count:"笑话",topics:"主题:",found:"找到:",
 describe:"描述场景!",fun:"搞笑",off:"冒犯",clean:"无害",
 fav_a:"收藏",fav_r:"已收藏",
@@ -435,11 +435,12 @@ const is=favs.includes(id);
 let ok;
 if(is){ok=await api('/api/favorites/'+id,{method:'DELETE'})}
 else{ok=await api('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({joke_id:id})})}
-if(ok===null){showToast(t('err_tts')||'Error');return}
+if(ok===null){showToast(t('err_fav')||'Error');return}
 if(is){favs=favs.filter(f=>f!==id);_fJ=_fJ.filter(j=>j.id!==id);
 btn.classList.remove('fo');btn.innerHTML='\ud83e\ude75 '+t('fav_a')}
 else{favs.push(id);btn.classList.add('fo');btn.innerHTML='\u2764\ufe0f '+t('fav_r')}
-loadStats();renderFavs();
+loadStats();
+if(!_fJ){loadFavs()}else{renderFavs()}
 }finally{_favLock=false}
 }
 
@@ -540,6 +541,8 @@ async function vmStart(){
     _vmRunning=false;
     showToast(t('vm_mic_denied')||'Microphone access denied');return;
   }
+  // If user clicked Stop while we were waiting for mic permission, release the stream
+  if(!_vmRunning){_vmStream.getTracks().forEach(t=>t.stop());_vmStream=null;return}
   const span=btn.querySelector('span');
   if(span){span.textContent=t('vm_stop')||'Stop'}else{btn.textContent='⏹ '+(t('vm_stop')||'Stop')}
   btn.className='btn bvm-stop';
@@ -608,11 +611,13 @@ function vmScheduleSend(){
     if(!_vmRunning)return;
     try{
     await vmProcessChunk();
+    if(!_vmRunning)return;
     if(!_vmCtx.length){vmScheduleSend();return}
     const ctx=_vmCtx.map(e=>e.text).join(' ');
     vmLog(document.getElementById('vmLog'),'Finding joke for: "'+ctx.substring(0,60)+'..."');
     const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({text:ctx,count:3})},180000);
+    if(!_vmRunning)return;
     const res=document.getElementById('vmRes');
     if(d&&d.jokes&&d.jokes.length){
       d.jokes.sort((a,b)=>(b.funniness||b.rating||0)-(a.funniness||a.rating||0));

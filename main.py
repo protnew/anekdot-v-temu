@@ -1,4 +1,4 @@
-"""Anekdot v Temu — AI-powered contextual joke app v3.17.1
+"""Anekdot v Temu — AI-powered contextual joke app v3.17.2
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -132,7 +132,7 @@ async def lifespan(app):
     if _flush_task and not _flush_task.done():
         _flush_task.cancel()
     # Shutdown: save ratings
-    global _pending_rating_save, _jokes_cache, search_engine
+    global _pending_rating_save, _jokes_cache, search_engine, _jokes_cache_mtime
     async with _rating_lock:
         if _pending_rating_save and _jokes_cache is not None:
             await _asyncio.to_thread(save_json, JOKES_FILE, _jokes_cache)
@@ -144,7 +144,7 @@ async def lifespan(app):
         search_engine = None
     print(t("console.shutdown_complete"))
 
-app = FastAPI(title="Анекдот в тему", version="3.17.1", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.17.2", lifespan=lifespan)
 
 # Request logging middleware
 @app.middleware("http")
@@ -815,14 +815,13 @@ async def random_joke(category: Optional[str] = Query(None), lang: Optional[str]
             return {**j, "category": category}
     
     # Filter categories by language
-    _FOREIGN = ("en_", "es_", "de_", "fr_", "pt_", "zh_", "ja_", "ar_", "hi_")
     if lang == "en":
         cats = [c for c in cats if c.startswith("en_")]
     elif lang and lang != "ru":
         cats = [c for c in cats if c.startswith(f"{lang}_")]
     else:
         # Default: exclude foreign-prefixed categories
-        cats = [c for c in cats if not c.startswith(_FOREIGN)]
+        cats = [c for c in cats if not any(c.startswith(p) for p in _FOREIGN_PREFIXES)]
     
     if not cats:
         cats = list(db.keys())
@@ -1628,7 +1627,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": True
         },
-        "version": "3.17.1"
+        "version": "3.17.2"
     }
 
 # ============================================================
@@ -1703,5 +1702,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(t("console.starting", version="3.17.1", port=port))
+    print(t("console.starting", version="3.17.2", port=port))
     uvicorn.run(app, host="0.0.0.0", port=port)
