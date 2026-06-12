@@ -175,6 +175,9 @@ textarea::placeholder{color:var(--mut)}
 <div class="vm-hd">
 <button class="btn bvm-start" id="vmBtn">🎙️ <span data-i18n="vm_start">Listen</span></button>
 <span class="vm-dot" id="vmDot" style="display:none"></span>
+<button class="btn bs" onclick="document.getElementById('vmLog').innerHTML=''" data-i18n="vm_clear" style="margin-left:8px">Clear</button>
+<button class="btn bs" onclick="_vmCtx=[];vmLog(document.getElementById('vmLog'),t('vm_ctx_cleared')||'Context cleared')" data-i18n="vm_reset" style="margin-left:4px">Reset</button>
+<label style="margin-left:auto;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="vmAutoTTS"> <span data-i18n="vm_autotts">Auto-play jokes</span></label>
 </div>
 <p class="vm-desc" data-i18n="vm_desc">Microphone listens to your conversation, recognizes speech and automatically finds matching jokes. Just press Listen and start talking!</p>
 <div class="vm-log" id="vmLog"></div>
@@ -184,7 +187,7 @@ textarea::placeholder{color:var(--mut)}
 </div></div>
 <div class="tp" id="ttsP"><span>🔊</span><span class="tt" id="ttsT"></span><button class="btn bs bg" onclick="stopTTS()">■ <span data-i18n="b_stop">Stop</span></button><span class="tx" onclick="stopTTS()">×</span></div>
 <div class="toast" id="toast"></div>
-<div class="ft"><span data-i18n="title">Joke in Context</span> v3.16.0 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
+<div class="ft"><span data-i18n="title">Joke in Context</span> v3.17.0 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
 <script>
 const I18N={
 en:{title:"Joke in Context",sub:"AI CONTEXTUAL JOKES",s_jokes:"Jokes",s_cats:"Categories",s_avg:"Avg Rating",s_favs:"Favorites",
@@ -200,7 +203,7 @@ j_count:"jokes",topics:"Topics:",found:"Found:",describe:"Describe a situation!"
 fun:"Funniness",off:"Offensiveness",clean:"Clean",
 fav_a:"Favorite",fav_r:"Favorited",
 q_work:"Work",q_it:"IT",q_fam:"Family",q_mon:"Money",q_love:"Love",q_hp:"Health",q_ai:"AI",q_cat:"Cats",
-t_voice:"🎙️ Voice",vm_start:"Listen",vm_stop:"Stop",vm_desc:"Microphone listens to your conversation, recognizes speech and automatically finds matching jokes. Just press Listen and start talking!",vm_jokes:"Matching Jokes"},
+t_voice:"🎙️ Voice",vm_start:"Listen",vm_stop:"Stop",vm_desc:"Microphone listens to your conversation, recognizes speech and automatically finds matching jokes. Just press Listen and start talking!",vm_jokes:"Matching Jokes",vm_mic_denied:"Microphone access denied",vm_clear:"Clear",vm_reset:"Reset",vm_autotts:"Auto-play jokes",vm_ctx_cleared:"Context cleared",vm_listening:"Listening..."},
 ru:{title:"Анекдот в Тему",sub:"AI ШУТКИ",
 s_jokes:"Анекдотов",s_cats:"Категорий",s_avg:"Ср. рейтинг",s_favs:"Избранное",
 t_ctx:"🎯 В тему",t_cat:"📂 Категории",t_rnd:"🎲 Случайный",t_fav:"❤️ Избранное",t_srch:"🔍 Поиск",
@@ -215,7 +218,7 @@ j_count:"анекдотов",topics:"Темы:",found:"Найдено:",
 describe:"Опишите ситуацию!",fun:"Смешность",off:"Обидность",clean:"Чистый",
 fav_a:"В избранное",fav_r:"В избранном",
 q_work:"Работа",q_it:"IT",q_fam:"Семья",q_mon:"Деньги",q_love:"Отношения",q_hp:"Здоровье",q_ai:"Нейросети",q_cat:"Котики",
-t_voice:"🎙️ Голос",vm_start:"Слушать",vm_stop:"Стоп",vm_desc:"Микрофон слушает ваш разговор, распознаёт речь и автоматически подбирает анекдоты в тему. Нажмите Слушать и начните говорить!",vm_jokes:"Подходящие анекдоты"},
+t_voice:"🎙️ Голос",vm_start:"Слушать",vm_stop:"Стоп",vm_desc:"Микрофон слушает ваш разговор, распознаёт речь и автоматически подбирает анекдоты в тему. Нажмите Слушать и начните говорить!",vm_jokes:"Подходящие анекдоты",vm_mic_denied:"Нет доступа к микрофону",vm_clear:"Очистить",vm_reset:"Сброс",vm_autotts:"Авто-озвучка шуток",vm_ctx_cleared:"Контекст сброшен",vm_listening:"Слушаю..."},
 es:{title:"Chiste en Contexto",sub:"CHISTES IA",s_jokes:"Chistes",s_cats:"Categorias",s_avg:"Media",s_favs:"Favoritos",
 t_ctx:"En contexto",t_cat:"Categorias",t_rnd:"Aleatorio",t_fav:"Favoritos",t_srch:"Buscar",
 ctx_t:"Describe la situacion",ctx_d:"Describe el contexto y encontraremos el chiste perfecto!",
@@ -227,7 +230,8 @@ no_res:"Nada encontrado",no_fav:"Sin favoritos",copied:"Copiado!",playing:"Repro
 err_tts:"Error TTS",j_count:"chistes",topics:"Temas:",found:"Encontrados:",
 describe:"Describe una situacion!",fun:"Gracia",off:"Ofensivo",clean:"Limpio",
 fav_a:"Favorito",fav_r:"En favoritos",
-q_work:"Trabajo",q_it:"IT",q_fam:"Familia",q_mon:"Dinero",q_love:"Amor",q_hp:"Salud",q_ai:"IA",q_cat:"Gatos"},
+q_work:"Trabajo",q_it:"IT",q_fam:"Familia",q_mon:"Dinero",q_love:"Amor",q_hp:"Salud",q_ai:"IA",q_cat:"Gatos",
+t_voice:"🎙️ Voz",vm_start:"Escuchar",vm_stop:"Parar",vm_desc:"El microfono escucha tu conversacion, reconoce la voz y encuentra chistes automaticamente.",vm_jokes:"Chistes encontrados",vm_mic_denied:"Acceso al microfono denegado",vm_clear:"Limpiar",vm_reset:"Reiniciar",vm_autotts:"Reproducir chistes",vm_ctx_cleared:"Contexto reiniciado",vm_listening:"Escuchando..."},
 de:{title:"Witz im Kontext",sub:"KI WITZE",s_jokes:"Witze",s_cats:"Kategorien",s_avg:"Durchschnitt",s_favs:"Favoriten",
 t_ctx:"Im Kontext",t_cat:"Kategorien",t_rnd:"Zufall",t_fav:"Favoriten",t_srch:"Suche",
 ctx_t:"Beschreibe die Situation",ctx_d:"Beschreibe den Kontext und wir finden den perfekten Witz!",
@@ -239,7 +243,8 @@ no_res:"Nichts gefunden",no_fav:"Keine Favoriten",copied:"Kopiert!",playing:"Abs
 err_tts:"TTS Fehler",j_count:"Witze",topics:"Themen:",found:"Gefunden:",
 describe:"Beschreibe eine Situation!",fun:"Witzig",off:"Beleidigend",clean:"Sicher",
 fav_a:"Favorit",fav_r:"In Favoriten",
-q_work:"Arbeit",q_it:"IT",q_fam:"Familie",q_mon:"Geld",q_love:"Liebe",q_hp:"Gesundheit",q_ai:"KI",q_cat:"Katzen"},
+q_work:"Arbeit",q_it:"IT",q_fam:"Familie",q_mon:"Geld",q_love:"Liebe",q_hp:"Gesundheit",q_ai:"KI",q_cat:"Katzen",
+t_voice:"🎙️ Sprache",vm_start:"Zuhoren",vm_stop:"Stopp",vm_desc:"Das Mikrofon hort Ihre Konversation, erkennt Sprache und findet automatisch passende Witze.",vm_jokes:"Gefundene Witze",vm_mic_denied:"Mikrofonzugriff verweigert",vm_clear:"Loschen",vm_reset:"Zurucksetzen",vm_autotts:"Witze abspielen",vm_ctx_cleared:"Kontext zuruckgesetzt",vm_listening:"Zuhoren..."},
 fr:{title:"Blague en Contexte",sub:"BLAGUES IA",s_jokes:"Blagues",s_cats:"Categories",s_avg:"Moyenne",s_favs:"Favoris",
 t_ctx:"En contexte",t_cat:"Categories",t_rnd:"Aleatoire",t_fav:"Favoris",t_srch:"Recherche",
 ctx_t:"Decrivez la situation",ctx_d:"Decrivez le contexte et nous trouverons la blague parfaite!",
@@ -251,7 +256,8 @@ no_res:"Rien trouve",no_fav:"Pas de favoris",copied:"Copie!",playing:"Lecture...
 err_tts:"Erreur TTS",j_count:"blagues",topics:"Themes:",found:"Trouves:",
 describe:"Decrivez une situation!",fun:"Drole",off:"Offensant",clean:"Correct",
 fav_a:"Favori",fav_r:"En favoris",
-q_work:"Travail",q_it:"IT",q_fam:"Famille",q_mon:"Argent",q_love:"Amour",q_hp:"Sante",q_ai:"IA",q_cat:"Chats"},
+q_work:"Travail",q_it:"IT",q_fam:"Famille",q_mon:"Argent",q_love:"Amour",q_hp:"Sante",q_ai:"IA",q_cat:"Chats",
+t_voice:"🎙️ Voix",vm_start:"Ecouter",vm_stop:"Arret",vm_desc:"Le micro ecoute votre conversation, reconnait la parole et trouve automatiquement des blagues.",vm_jokes:"Blagues trouvees",vm_mic_denied:"Acces au micro refuse",vm_clear:"Effacer",vm_reset:"Reinitialiser",vm_autotts:"Lire les blagues",vm_ctx_cleared:"Contexte efface",vm_listening:"Ecoute..."},
 pt:{title:"Piada em Contexto",sub:"PIADAS IA",s_jokes:"Piadas",s_cats:"Categorias",s_avg:"Media",s_favs:"Favoritos",
 t_ctx:"Em contexto",t_cat:"Categorias",t_rnd:"Aleatoria",t_fav:"Favoritos",t_srch:"Busca",
 ctx_t:"Descreva a situacao",ctx_d:"Descreva o contexto e encontraremos a piada perfeita!",
@@ -263,7 +269,8 @@ no_res:"Nada encontrado",no_fav:"Sem favoritos",copied:"Copiado!",playing:"Tocan
 err_tts:"Erro TTS",j_count:"piadas",topics:"Temas:",found:"Encontrados:",
 describe:"Descreva uma situacao!",fun:"Engracado",off:"Ofensivo",clean:"Limpo",
 fav_a:"Favorito",fav_r:"Nos favoritos",
-q_work:"Trabalho",q_it:"IT",q_fam:"Familia",q_mon:"Dinheiro",q_love:"Amor",q_hp:"Saude",q_ai:"IA",q_cat:"Gatos"},
+q_work:"Trabalho",q_it:"IT",q_fam:"Familia",q_mon:"Dinheiro",q_love:"Amor",q_hp:"Saude",q_ai:"IA",q_cat:"Gatos",
+t_voice:"🎙️ Voz",vm_start:"Ouvir",vm_stop:"Parar",vm_desc:"O microfone ouve sua conversa, reconhece a fala e encontra piadas automaticamente.",vm_jokes:"Piadas encontradas",vm_mic_denied:"Acesso ao microfone negado",vm_clear:"Limpar",vm_reset:"Resetar",vm_autotts:"Tocar piadas",vm_ctx_cleared:"Contexto resetado",vm_listening:"Ouvindo..."},
 zh:{title:"情境笑话",sub:"AI情境笑话",
 s_jokes:"笑话",s_cats:"分类",s_avg:"评分",s_favs:"收藏",
 t_ctx:"情境",t_cat:"分类",t_rnd:"随机",t_fav:"收藏",t_srch:"搜索",
@@ -276,7 +283,8 @@ no_res:"没找到",no_fav:"还没有收藏",copied:"已复制!",playing:"播放.
 j_count:"笑话",topics:"主题:",found:"找到:",
 describe:"描述场景!",fun:"搞笑",off:"冒犯",clean:"无害",
 fav_a:"收藏",fav_r:"已收藏",
-q_work:"工作",q_it:"IT",q_fam:"家庭",q_mon:"钱",q_love:"爱情",q_hp:"健康",q_ai:"AI",q_cat:"猫"}
+q_work:"工作",q_it:"IT",q_fam:"家庭",q_mon:"钱",q_love:"爱情",q_hp:"健康",q_ai:"AI",q_cat:"猫",
+t_voice:"🎙️ 语音",vm_start:"听",vm_stop:"停",vm_desc:"麦克风监听对话，识别语音并自动寻找匹配的笑话。",vm_jokes:"匹配的笑话",vm_mic_denied:"麦克风访问被拒绝",vm_clear:"清除",vm_reset:"重置",vm_autotts:"自动播放笑话",vm_ctx_cleared:"上下文已清除",vm_listening:"正在听..."}
 };
 let LANG=localStorage.getItem('jic_lang')||'en';
 function t(k){return(I18N[LANG]&&I18N[LANG][k])||I18N.en[k]||k}
@@ -460,8 +468,8 @@ const sb=e.target.closest('.spb');if(sb){speakJ(sb)}
 });
 
 async function rateJ(jid,val){
-await api('/api/rate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({joke_id:jid,rating:val})});
-showToast('\u2b50 '+val+'/5');loadStats();
+const r=await api('/api/rate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({joke_id:jid,rating:val})});
+if(r){showToast('⭐ '+val+'/5');loadStats()}else{showToast(t('err_tts')||'Error')}
 }
 
 function stopTTS(){
@@ -510,30 +518,32 @@ const VM_SLICE_SEC=7, VM_SEND_SEC=20, VM_CTX_MAX=45;
 
 async function vmStart(){
   if(_vmRunning)return;
+  _vmRunning=true;  // guard BEFORE async call to prevent race condition
   const btn=document.getElementById('vmBtn');
   const dot=document.getElementById('vmDot');
   const log=document.getElementById('vmLog');
   try{
     _vmStream=await navigator.mediaDevices.getUserMedia({audio:true});
   }catch(e){
-    showToast('Microphone access denied');return;
+    _vmRunning=false;
+    showToast(t('vm_mic_denied')||'Microphone access denied');return;
   }
-  _vmRunning=true;
   const span=btn.querySelector('span');
   if(span){span.textContent=t('vm_stop')||'Stop'}else{btn.textContent='⏹ '+(t('vm_stop')||'Stop')}
   btn.className='btn bvm-stop';
   dot.style.display='inline-block';
   _vmChunks=[];
-  const mime=MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')?'audio/ogg;codecs=opus':'';
+  const mime=MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')?'audio/ogg;codecs=opus':MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':MediaRecorder.isTypeSupported('audio/aac')?'audio/aac':'';
   _vmRecorder=new MediaRecorder(_vmStream,mime?{mimeType:mime}:{});
   _vmRecorder.ondataavailable=e=>{if(e.data.size>0)_vmChunks.push(e.data)};
   _vmRecorder.start(VM_SLICE_SEC*1000);
-  vmLog(log,'Listening...');
+  vmLog(log,t('vm_listening')||'Listening...');
   vmScheduleSend();
 }
 
 function vmStop(){
   _vmRunning=false;
+  stopTTS();
   const btn=document.getElementById('vmBtn');
   const dot=document.getElementById('vmDot');
   if(_vmSendTimer){clearTimeout(_vmSendTimer);_vmSendTimer=null}
@@ -563,7 +573,7 @@ async function vmProcessChunk(){
   try{
     const b64=await blobToBase64(blob);
     vmLog(log,'Recognizing speech...');
-    const fmt=blob.type.includes('ogg')?'ogg':'webm';
+    const fmt=blob.type.includes('ogg')?'ogg':blob.type.includes('mp4')?'mp4':blob.type.includes('aac')?'aac':'webm';
     const d=await api('/api/voice/stt',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({audio_base64:b64,format:fmt,language:'auto'})},30000);
     if(!d||!d.text){vmLog(log,'(silence)');return}
@@ -583,7 +593,7 @@ function vmScheduleSend(){
   _vmSendTimer=setTimeout(async()=>{
     if(!_vmRunning)return;
     await vmProcessChunk();
-    if(_vmCtx.length<2){vmScheduleSend();return}
+    if(!_vmCtx.length){vmScheduleSend();return}
     const ctx=_vmCtx.map(e=>e.text).join(' ');
     vmLog(document.getElementById('vmLog'),'Finding joke for: "'+ctx.substring(0,60)+'..."');
     const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -593,7 +603,8 @@ function vmScheduleSend(){
       d.jokes.sort((a,b)=>(b.funniness||b.rating||0)-(a.funniness||a.rating||0));
       res.innerHTML=d.jokes.map(j=>rCard(j)).join('');
       const firstText=d.jokes[0].text;
-      if(firstText)speakJoke(firstText);
+      const autoTTS=document.getElementById('vmAutoTTS');
+      if(firstText&&autoTTS&&autoTTS.checked)speakJoke(firstText);
       vmLog(document.getElementById('vmLog'),'Found '+d.jokes.length+' jokes ('+(d.matched_categories||[]).join(', ')+')');
     }else{
       vmLog(document.getElementById('vmLog'),'No matching jokes');

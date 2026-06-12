@@ -1,4 +1,4 @@
-"""Anekdot v Temu — AI-powered contextual joke app v3.16.0
+"""Anekdot v Temu — AI-powered contextual joke app v3.17.0
 - TF-IDF semantic search
 - whisper.cpp local STT (74MB, 99 langs)
 - Silero VAD voice activity detection (300KB)
@@ -142,7 +142,7 @@ async def lifespan(app):
         search_engine = None
     print(t("console.shutdown_complete"))
 
-app = FastAPI(title="Анекдот в тему", version="3.16.0", lifespan=lifespan)
+app = FastAPI(title="Анекдот в тему", version="3.17.0", lifespan=lifespan)
 
 # Request logging middleware
 @app.middleware("http")
@@ -182,7 +182,14 @@ def load_jokes():
     if _jokes_cache is not None and mtime == _jokes_cache_mtime:
         return _jokes_cache
     with open(JOKES_FILE, "r", encoding="utf-8") as f:
-        _jokes_cache = json.load(f)
+        try:
+            _jokes_cache = json.load(f)
+        except json.JSONDecodeError as e:
+            logger.error("Corrupted jokes_db.json: %s — keeping previous cache", e)
+            if _jokes_cache is not None:
+                return _jokes_cache
+            logger.error("No previous cache, returning empty dict")
+            return {}
     _jokes_cache_mtime = mtime
     return _jokes_cache
 
@@ -280,8 +287,9 @@ class SemanticSearchEngine:
         documents = []
         for j in self.jokes:
             tags_text = " ".join(j.get("tags", []))
-            doc = f"{j['text']} {j['category']} {tags_text}"
-            documents.append(doc)
+            doc = f"{j.get('text', '')} {j.get('category', '')} {tags_text}"
+            if doc.strip():
+                documents.append(doc)
         self.tfidf_matrix = self.vectorizer.fit_transform(documents)
 
     def search(self, query: str, top_k: int = 10, min_score: float = 0.05) -> List[dict]:
@@ -1319,10 +1327,17 @@ async def speech_to_text(request: dict):
     """
     audio_b64 = request.get("audio_base64", "")
     audio_format = request.get("format", "wav")
-    language = normalize_lang(request.get("language", DEFAULT_LANG))
+    raw_lang = request.get("language", DEFAULT_LANG)
+    # "auto" means let whisper detect language — do NOT normalize
+    language = raw_lang if raw_lang == "auto" else normalize_lang(raw_lang)
     
     if not audio_b64:
         raise HTTPException(status_code=400, detail=t("error.audio_required"))
+    
+    # Prevent OOM: limit base64 payload to 25 MB (~33 MB decoded)
+    MAX_AUDIO_B64 = 25 * 1024 * 1024
+    if len(audio_b64) > MAX_AUDIO_B64:
+        raise HTTPException(status_code=413, detail="Audio payload too large (max 25 MB)")
     
     # Validate whisper-cli exists
     use_faster_whisper = False
@@ -1373,7 +1388,7 @@ async def speech_to_text(request: dict):
             text = await asyncio.to_thread(_fw_transcribe)
             model_name = "faster_whisper base (CPU)"
         else:
-            # whisper.cpp (Linux/Docker)
+            # whisper.cpp (Linux/Docker) — "auto" lets whisper detect language
             rc, stdout, stderr = await _run_subprocess([WHISPER_CLI, "-m", WHISPER_MODEL, "-l", language, "-f", wav_path,
                  "--no-timestamps", "-t", "4", "--output-txt"], timeout=30
             )
@@ -1610,7 +1625,7 @@ async def get_stats():
             "alice_skill": True,
             "voice": False  # stub only
         },
-        "version": "3.16.0"
+        "version": "3.17.0"
     }
 
 # ============================================================
@@ -1685,5 +1700,5 @@ async def check_spam(request: ModerateRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(t("console.starting", version="3.16.0", port=port))
+    print(t("console.starting", version="3.17.0", port=port))
     uvicorn.run(app, host="0.0.0.0", port=port)
