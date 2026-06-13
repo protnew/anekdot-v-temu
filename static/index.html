@@ -30,7 +30,7 @@ select.ls{background:var(--card2);border:1px solid var(--brd);color:var(--txt);p
 .tab{flex:1;padding:11px 6px;text-align:center;cursor:pointer;font-size:12px;font-weight:500;color:var(--dim);transition:all .2s;border-bottom:3px solid transparent;user-select:none}
 .tab:hover{color:var(--txt);background:var(--card2)}
 .tab.active{color:var(--acc);border-bottom-color:var(--acc);background:rgba(0,212,255,.05)}
-.mn{max-width:800px;margin:0 auto;padding:18px 14px}
+.mn{max-width:1000px;margin:0 auto;padding:18px 14px}
 .tc{display:none}.tc.active{display:block}
 .cb{background:linear-gradient(135deg,rgba(0,212,255,.08),rgba(139,92,246,.08));border:1px solid var(--brd);border-radius:var(--rad);padding:20px;margin-bottom:16px}
 .cb h2{font-size:17px;margin-bottom:4px}
@@ -95,17 +95,33 @@ textarea::placeholder{color:var(--mut)}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .ft{text-align:center;padding:16px;font-size:10px;color:var(--mut);border-top:1px solid var(--brd);margin-top:24px}
 @media(max-width:600px){.hd-in{flex-direction:column;align-items:flex-start}.mn{padding:12px 8px}.jc{padding:12px}.cg{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}.br{flex-direction:column}.btn{width:100%;justify-content:center}.sc{min-width:55px;padding:6px 4px}.sv{font-size:13px}}
-.vm-box{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px}
-.vm-hd{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.vm-bar{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .vm-dot{width:12px;height:12px;border-radius:50%;background:#ff3b3b;animation:vm-pulse 1s infinite}
 @keyframes vm-pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.bvm-start{background:var(--acc);color:#fff;font-size:14px;padding:10px 24px;border:none;border-radius:8px;cursor:pointer}
-.bvm-stop{background:#ff3b3b;color:#fff;font-size:14px;padding:10px 24px;border:none;border-radius:8px;cursor:pointer}
-.vm-desc{color:var(--mut);font-size:13px;line-height:1.5;margin-bottom:10px}
-.vm-log{background:var(--card);border:1px solid var(--brd);border-radius:8px;max-height:200px;overflow-y:auto;padding:8px;font-family:monospace;font-size:12px;color:var(--mut)}
-.vm-log:empty::before{content:"Voice monitor log...";color:#475569}
-.vml{padding:2px 0;border-bottom:1px solid #1e293b33}
+.bvm-start{background:var(--acc);color:#fff;font-size:15px;padding:10px 28px;border:none;border-radius:10px;cursor:pointer;font-weight:700}
+.bvm-stop{background:#ff3b3b;color:#fff;font-size:15px;padding:10px 28px;border:none;border-radius:10px;cursor:pointer;font-weight:700;animation:vm-pulse 1s infinite}
+.vm-split{display:flex;gap:12px;min-height:calc(100vh - 220px)}
+.vm-left{flex:1;background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:14px;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.vm-right{flex:1.1;background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:14px;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.vm-panel-hd{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.vm-transcript{flex:1;overflow-y:auto;font-size:15px;line-height:1.7;padding-right:4px}
+.vm-transcript .vm-msg{padding:6px 0;border-bottom:1px solid var(--brd);animation:fi .3s ease}
+.vm-transcript .vm-msg:last-child{border-bottom:none}
+.vm-transcript .vm-msg:hover{background:var(--card2);border-radius:6px;padding-left:6px;padding-right:6px}
+.vm-time{font-size:10px;color:var(--mut);font-family:var(--mon);display:block;margin-bottom:2px}
+.vm-new{color:var(--acc)!important;font-weight:500}
+.vm-right-body{flex:1;overflow-y:auto;padding-right:4px}
+.vm-ph{color:var(--mut);font-size:14px;text-align:center;padding:40px 16px}
+.vm-ph .vm-ph-i{font-size:36px;margin-bottom:8px}
+.vm-joke-count{font-size:11px;color:var(--grn);margin-left:auto;font-family:var(--mon)}
+.vm-debug{margin-top:8px;border:1px solid var(--brd);border-radius:8px;overflow:hidden}
+.vm-debug summary{padding:6px 10px;font-size:11px;color:var(--mut);cursor:pointer;user-select:none}
+.vm-debug summary:hover{color:var(--dim)}
+.vm-log{max-height:120px;overflow-y:auto;padding:6px 10px;font-family:monospace;font-size:11px;color:var(--mut)}
+.vm-log:empty::before{content:"Debug log...";color:#475569}
+.vml{padding:1px 0}
 .vml-t{color:#64748b;margin-right:6px}
+@media(max-width:700px){.vm-split{flex-direction:column;min-height:auto}.vm-left{min-height:180px}.vm-right{min-height:300px}}
 </style>
 </head>
 <body data-theme="dark">
@@ -127,16 +143,40 @@ textarea::placeholder{color:var(--mut)}
 <div class="sc"><div class="sv" id="sL">-</div><div class="sl">LLM</div></div>
 </div>
 <div class="tabs" role="tablist">
-<div class="tab active" data-tab="context" role="tab" tabindex="0" aria-selected="true" data-i18n="t_ctx">🎯 In Context</div>
+<div class="tab active" data-tab="voice" role="tab" tabindex="0" aria-selected="true" data-i18n="t_voice">🎙️ Voice</div>
+<div class="tab" data-tab="context" role="tab" tabindex="0" aria-selected="false" data-i18n="t_ctx">🎯 In Context</div>
 <div class="tab" data-tab="cats" role="tab" tabindex="0" aria-selected="false" data-i18n="t_cat">📂 Categories</div>
 <div class="tab" data-tab="rand" role="tab" tabindex="0" aria-selected="false" data-i18n="t_rnd">🎲 Random</div>
 <div class="tab" data-tab="favs" role="tab" tabindex="0" aria-selected="false" data-i18n="t_fav">❤️ Favorites</div>
 <div class="tab" data-tab="srch" role="tab" tabindex="0" aria-selected="false" data-i18n="t_srch">🔍 Search</div>
-<div class="tab" data-tab="voice" role="tab" tabindex="0" aria-selected="false" data-i18n="t_voice">🎙️ Voice</div>
 </div>
 <div class="mn">
 <div id="offB" style="display:none;background:var(--red);color:#fff;padding:8px;border-radius:8px;margin-bottom:10px;text-align:center" data-i18n="offline">Server unavailable</div>
-<div class="tc active" id="tab-context">
+<div class="tc active" id="tab-voice">
+<div class="vm-bar">
+<button class="btn bvm-start" id="vmBtn">🎙️ <span data-i18n="vm_start">Listen</span></button>
+<span class="vm-dot" id="vmDot" style="display:none"></span>
+<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="vmAutoTTS"> <span data-i18n="vm_autotts">Auto-play jokes</span></label>
+<button class="btn bs bg" onclick="vmClearAll()" data-i18n="vm_clear">Clear</button>
+<button class="btn bs bg" onclick="vmResetCtx()" data-i18n="vm_reset">Reset</button>
+</div>
+<div class="vm-split">
+<div class="vm-left">
+<div class="vm-panel-hd">🗣️ <span data-i18n="vm_conv">Live Conversation</span></div>
+<div class="vm-transcript" id="vmTranscript">
+<div class="vm-ph"><div class="vm-ph-i">🎙️</div><p data-i18n="vm_ph_conv">Press Listen and start talking. Everything you say will appear here in real time.</p></div>
+</div>
+</div>
+<div class="vm-right">
+<div class="vm-panel-hd">😂 <span data-i18n="vm_jokes">Matching Jokes</span><span class="vm-joke-count" id="vmJokeCount"></span></div>
+<div class="vm-right-body" id="vmRes">
+<div class="vm-ph"><div class="vm-ph-i">🎭</div><p data-i18n="vm_ph_jokes">Jokes matching your conversation will appear here automatically.</p></div>
+</div>
+</div>
+</div>
+<details class="vm-debug"><summary data-i18n="vm_debug">Debug log</summary><div class="vm-log" id="vmLog"></div></details>
+</div>
+<div class="tc" id="tab-context">
 <div class="cb">
 <h2>🎯 <span data-i18n="ctx_t">Describe the Situation</span></h2>
 <p data-i18n="ctx_d">Describe the context and we'll find the perfect joke!</p>
@@ -150,9 +190,20 @@ textarea::placeholder{color:var(--mut)}
 <div id="ctxR"></div>
 </div>
 <div class="tc" id="tab-cats">
+<div id="catListView">
 <h2 style="margin-bottom:12px">📂 <span data-i18n="cat_t">Joke Categories</span></h2>
 <div class="cg" id="catG"></div>
-<div id="catJ" style="margin-top:14px"></div>
+</div>
+<div id="catDrillView" style="display:none">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+<button class="btn bg bs" onclick="catBack()">← <span data-i18n="cat_back">Back</span></button>
+<h2 id="catDrillTitle" style="margin:0"></h2>
+</div>
+<div id="catJ"></div>
+<div style="text-align:center;margin-top:12px">
+<button class="btn bg" id="catMoreBtn" onclick="catLoadMore()" style="display:none"><span data-i18n="cat_more">Load more</span></button>
+</div>
+</div>
 </div>
 <div class="tc" id="tab-rand">
 <div style="text-align:center;margin:24px 0">
@@ -160,7 +211,10 @@ textarea::placeholder{color:var(--mut)}
 </div><div id="rndR"></div>
 </div>
 <div class="tc" id="tab-favs">
-<h2 style="margin-bottom:12px">❤️ <span data-i18n="fav_t">Favorite Jokes</span></h2>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+<h2 style="margin:0">❤️ <span data-i18n="fav_t">Favorite Jokes</span></h2>
+<span id="favCount" style="font-size:13px;color:var(--mut);font-family:var(--mon)"></span>
+</div>
 <div id="favL"></div>
 </div>
 <div class="tc" id="tab-srch">
@@ -170,24 +224,10 @@ textarea::placeholder{color:var(--mut)}
 <button class="btn ba" onclick="doSearch()" data-i18n="b_srch">Search</button>
 </div><div id="srchR"></div>
 </div>
-<div class="tc" id="tab-voice">
-<div class="vm-box">
-<div class="vm-hd">
-<button class="btn bvm-start" id="vmBtn">🎙️ <span data-i18n="vm_start">Listen</span></button>
-<span class="vm-dot" id="vmDot" style="display:none"></span>
-<button class="btn bs bg" onclick="document.getElementById('vmLog').innerHTML=''" data-i18n="vm_clear" style="margin-left:8px">Clear</button>
-<button class="btn bs bg" onclick="_vmCtx=[];vmLog(document.getElementById('vmLog'),t('vm_ctx_cleared')||'Context cleared')" data-i18n="vm_reset" style="margin-left:4px">Reset</button>
-<label style="margin-left:auto;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="vmAutoTTS"> <span data-i18n="vm_autotts">Auto-play jokes</span></label>
 </div>
-<p class="vm-desc" data-i18n="vm_desc">Microphone listens to your conversation, recognizes speech and automatically finds matching jokes. Just press Listen and start talking!</p>
-<div class="vm-log" id="vmLog"></div>
-<h3 style="margin:12px 0 8px;color:var(--acc)">😂 <span data-i18n="vm_jokes">Matching Jokes</span></h3>
-<div id="vmRes"></div>
-</div>
-</div></div>
 <div class="tp" id="ttsP"><span>🔊</span><span class="tt" id="ttsT"></span><button class="btn bs bg" onclick="stopTTS()">■ <span data-i18n="b_stop">Stop</span></button><span class="tx" onclick="stopTTS()">×</span></div>
 <div class="toast" id="toast"></div>
-<div class="ft"><span data-i18n="title">Joke in Context</span> v3.17.4 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
+<div class="ft"><span data-i18n="title">Joke in Context</span> v3.19.0 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
 <script>
 const I18N={
 en:{title:"Joke in Context",sub:"AI CONTEXTUAL JOKES",s_jokes:"Jokes",s_cats:"Categories",s_avg:"Avg Rating",s_favs:"Favorites",
@@ -196,6 +236,7 @@ ctx_t:"Describe the Situation",ctx_d:"Describe the context and we will find the 
 ctx_ph:"For example: sitting in a meeting, the boss talks nonsense...",
 b_find:"Find Joke!",b_gen:"AI Generate",b_rnd:"Random joke!",b_srch:"Search",b_stop:"Stop",
 cat_t:"Joke Categories",fav_t:"Favorite Jokes",srch_t:"Search Jokes",srch_ph:"Enter a word or phrase...",
+cat_back:"Back",cat_more:"Load more",
 offline:"Server unavailable",loading:"Finding a joke...",generating:"Generating AI joke...",
 no_res:"Nothing found",no_fav:"No favorites yet. Click the heart!",
 copied:"Copied!",playing:"Playing...",err_tts:"TTS error",err_rate:"Rating failed",err_fav:"Favorite error",
@@ -203,7 +244,7 @@ j_count:"jokes",topics:"Topics:",found:"Found:",describe:"Describe a situation!"
 fun:"Funniness",off:"Offensiveness",clean:"Clean",
 fav_a:"Favorite",fav_r:"Favorited",
 q_work:"Work",q_it:"IT",q_fam:"Family",q_mon:"Money",q_love:"Love",q_hp:"Health",q_ai:"AI",q_cat:"Cats",
-t_voice:"🎙️ Voice",vm_start:"Listen",vm_stop:"Stop",vm_desc:"Microphone listens to your conversation, recognizes speech and automatically finds matching jokes. Just press Listen and start talking!",vm_jokes:"Matching Jokes",vm_mic_denied:"Microphone access denied",vm_clear:"Clear",vm_reset:"Reset",vm_autotts:"Auto-play jokes",vm_ctx_cleared:"Context cleared",vm_listening:"Listening..."},
+t_voice:"🎙️ Voice",vm_start:"Listen",vm_stop:"Stop",vm_desc:"Microphone listens to your conversation, recognizes speech and automatically finds matching jokes. Just press Listen and start talking!",vm_jokes:"Matching Jokes",vm_mic_denied:"Microphone access denied",vm_clear:"Clear",vm_reset:"Reset",vm_autotts:"Auto-play jokes",vm_ctx_cleared:"Context cleared",vm_listening:"Listening...",vm_conv:"Live Conversation",vm_ph_conv:"Press Listen and start talking. Everything you say will appear here in real time.",vm_ph_jokes:"Jokes matching your conversation will appear here automatically.",vm_debug:"Debug log",vm_heard:"Heard",vm_silence:"(silence detected)",vm_recognizing:"Recognizing...",vm_searching:"Finding jokes...",vm_found:"Found",vm_no_match:"No matching jokes yet",vm_jokes_n:"jokes"},
 ru:{title:"Анекдот в Тему",sub:"AI ШУТКИ",
 s_jokes:"Анекдотов",s_cats:"Категорий",s_avg:"Ср. рейтинг",s_favs:"Избранное",
 t_ctx:"🎯 В тему",t_cat:"📂 Категории",t_rnd:"🎲 Случайный",t_fav:"❤️ Избранное",t_srch:"🔍 Поиск",
@@ -211,6 +252,7 @@ ctx_t:"Опишите ситуацию",ctx_d:"Опишите контекст �
 ctx_ph:"Например: сижу на совещании, начальник опять несёт чушь...",
 b_find:"Анекдот в тему!",b_gen:"AI-генерация",b_rnd:"Случайный!",b_srch:"Найти",b_stop:"Стоп",
 cat_t:"Категории",fav_t:"Избранные",srch_t:"Поиск",srch_ph:"Введите слово...",
+cat_back:"Назад",cat_more:"Ещё",
 offline:"Сервер недоступен",loading:"Подбираю...",generating:"Генерирую...",
 no_res:"Ничего не найдено",no_fav:"Пока нет избранных.",
 copied:"Скопировано!",playing:"Воспроизвожу...",err_tts:"Ошибка TTS",err_rate:"Ошибка рейтинга",err_fav:"Ошибка избранного",
@@ -218,7 +260,7 @@ j_count:"анекдотов",topics:"Темы:",found:"Найдено:",
 describe:"Опишите ситуацию!",fun:"Смешность",off:"Обидность",clean:"Чистый",
 fav_a:"В избранное",fav_r:"В избранном",
 q_work:"Работа",q_it:"IT",q_fam:"Семья",q_mon:"Деньги",q_love:"Отношения",q_hp:"Здоровье",q_ai:"Нейросети",q_cat:"Котики",
-t_voice:"🎙️ Голос",vm_start:"Слушать",vm_stop:"Стоп",vm_desc:"Микрофон слушает ваш разговор, распознаёт речь и автоматически подбирает анекдоты в тему. Нажмите Слушать и начните говорить!",vm_jokes:"Подходящие анекдоты",vm_mic_denied:"Нет доступа к микрофону",vm_clear:"Очистить",vm_reset:"Сброс",vm_autotts:"Авто-озвучка шуток",vm_ctx_cleared:"Контекст сброшен",vm_listening:"Слушаю..."},
+t_voice:"🎙️ Голос",vm_start:"Слушать",vm_stop:"Стоп",vm_desc:"Микрофон слушает ваш разговор, распознаёт речь и автоматически подбирает анекдоты в тему. Нажмите Слушать и начните говорить!",vm_jokes:"Подходящие анекдоты",vm_mic_denied:"Нет доступа к микрофону",vm_clear:"Очистить",vm_reset:"Сброс",vm_autotts:"Авто-озвучка шуток",vm_ctx_cleared:"Контекст сброшен",vm_listening:"Слушаю...",vm_conv:"Разговор вживую",vm_ph_conv:"Нажмите Слушать и начните говорить. Всё, что вы скажете, появится здесь в реальном времени.",vm_ph_jokes:"Анекдоты, подходящие к разговору, появятся здесь автоматически.",vm_debug:"Отладка",vm_heard:"Распознано",vm_silence:"(тишина)",vm_recognizing:"Распознаю речь...",vm_searching:"Ищу анекдоты...",vm_found:"Найдено",vm_no_match:"Пока ничего не найдено",vm_jokes_n:"анекд."},
 es:{title:"Chiste en Contexto",sub:"CHISTES IA",s_jokes:"Chistes",s_cats:"Categorias",s_avg:"Media",s_favs:"Favoritos",
 t_ctx:"En contexto",t_cat:"Categorias",t_rnd:"Aleatorio",t_fav:"Favoritos",t_srch:"Buscar",
 ctx_t:"Describe la situacion",ctx_d:"Describe el contexto y encontraremos el chiste perfecto!",
@@ -357,9 +399,38 @@ card.addEventListener('click',()=>loadCatJ(cat));g.appendChild(card);
 });
 }
 
+let _catCur=null,_catOffset=0;const CAT_PAGE=10;
 async function loadCatJ(cat){
-const d=await api('/api/jokes?category='+encodeURIComponent(cat)+'&count=10');
-if(!d)return;document.getElementById('catJ').innerHTML=d.jokes.map(j=>rCard(j)).join('');
+_catCur=cat;_catOffset=0;
+document.getElementById('catListView').style.display='none';
+document.getElementById('catDrillView').style.display='block';
+document.getElementById('catDrillTitle').textContent=ge(cat)+' '+cat;
+const el=document.getElementById('catJ');
+el.innerHTML='<div class="ld"><div class="sp"></div></div>';
+const d=await api('/api/jokes?category='+encodeURIComponent(cat)+'&count='+CAT_PAGE+'&offset=0&randomize=false');
+if(!d||!d.jokes){el.innerHTML='<div class="em"><div class="ei">📭</div><p>'+t('no_res')+'</p></div>';return}
+el.innerHTML=d.jokes.map(j=>rCard(j)).join('');
+_catOffset=d.jokes.length;
+const moreBtn=document.getElementById('catMoreBtn');
+moreBtn.style.display=(d.total>_catOffset)?'inline-flex':'none';
+}
+function catBack(){
+document.getElementById('catDrillView').style.display='none';
+document.getElementById('catListView').style.display='block';
+}
+async function catLoadMore(){
+if(!_catCur)return;
+const moreBtn=document.getElementById('catMoreBtn');
+moreBtn.style.display='none';
+const el=document.getElementById('catJ');
+el.innerHTML+='<div class="ld" id="catLoadingMore"><div class="sp"></div></div>';
+const d=await api('/api/jokes?category='+encodeURIComponent(_catCur)+'&count='+CAT_PAGE+'&offset='+_catOffset+'&randomize=false');
+const ld=document.getElementById('catLoadingMore');if(ld)ld.remove();
+if(d&&d.jokes&&d.jokes.length){
+el.innerHTML+=d.jokes.map(j=>rCard(j)).join('');
+_catOffset+=d.jokes.length;
+moreBtn.style.display=(d.total>_catOffset)?'inline-flex':'none';
+}
 }
 
 const QT=[{k:'q_work',q:'work boss office'},{k:'q_it',q:'programmer code bug'},
@@ -427,8 +498,9 @@ if(d&&d.jokes){favs=d.jokes.map(j=>j.id);_fJ=d.jokes}renderFavs();
 }
 function renderFavs(){
 const el=document.getElementById('favL');
-if(_fJ&&_fJ.length)el.innerHTML=_fJ.map(j=>rCard(j)).join('');
-else el.innerHTML='<div class="em"><div class="ei">\u2764\ufe0f</div><p>'+t('no_fav')+'</p></div>';
+const cnt=document.getElementById('favCount');
+if(_fJ&&_fJ.length){el.innerHTML=_fJ.map(j=>rCard(j)).join('');if(cnt)cnt.textContent=_fJ.length+' '+(t('j_count')||'jokes')}
+else{el.innerHTML='<div class="em"><div class="ei">\u2764\ufe0f</div><p>'+t('no_fav')+'</p></div>';if(cnt)cnt.textContent=''}
 }
 
 let _favLock=false;
@@ -526,36 +598,42 @@ a.onended=()=>stopTTS();a.onerror=()=>{stopTTS();showToast(t('err_tts'))};a.play
 function showToast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2500)}
 
 // ============================================================
-// Voice Monitor — browser microphone → STT → context → joke
+// Voice Monitor v2 — split-screen: LEFT live transcript, RIGHT jokes
 // ============================================================
 
-let _vmStream=null,_vmRecorder=null,_vmChunks=[],_vmRunning=false,_vmTimer=null,_vmSendTimer=null,_vmCtx=[];
-const VM_SLICE_SEC=7, VM_SEND_SEC=20, VM_CTX_MAX=45;
+let _vmStream=null,_vmRecorder=null,_vmChunks=[],_vmRunning=false,_vmSendTimer=null,_vmCtx=[],_vmSendCount=0,_vmSearching=false;
+const VM_SLICE_SEC=5, VM_SEND_SEC=8, VM_CTX_MAX=60;
 
 async function vmStart(){
   if(_vmRunning)return;
-  _vmRunning=true;  // guard BEFORE async call to prevent race condition
+  _vmRunning=true;
   const btn=document.getElementById('vmBtn');
   const dot=document.getElementById('vmDot');
-  const log=document.getElementById('vmLog');
   try{
     _vmStream=await navigator.mediaDevices.getUserMedia({audio:true});
   }catch(e){
     _vmRunning=false;
     showToast(t('vm_mic_denied')||'Microphone access denied');return;
   }
-  // If user clicked Stop while we were waiting for mic permission, release the stream
-  if(!_vmRunning){_vmStream.getTracks().forEach(t=>t.stop());_vmStream=null;return}
+  if(!_vmRunning){_vmStream.getTracks().forEach(tr=>tr.stop());_vmStream=null;return}
   const span=btn.querySelector('span');
-  if(span){span.textContent=t('vm_stop')||'Stop'}else{btn.textContent='⏹ '+(t('vm_stop')||'Stop')}
+  if(span)span.textContent=t('vm_stop')||'Stop';
   btn.className='btn bvm-stop';
   dot.style.display='inline-block';
   _vmChunks=[];
+  _vmCtx=[];
+  _vmSendCount=0;
+  vmClearTranscript();
+  vmLog('Voice monitor started');
   const mime=MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')?'audio/ogg;codecs=opus':MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':MediaRecorder.isTypeSupported('audio/aac')?'audio/aac':'';
-  _vmRecorder=new MediaRecorder(_vmStream,mime?{mimeType:mime}:{});
-  _vmRecorder.ondataavailable=e=>{if(e.data.size>0)_vmChunks.push(e.data)};
+  try{
+    _vmRecorder=new MediaRecorder(_vmStream,mime?{mimeType:mime}:{});
+  }catch(e2){
+    _vmRunning=false;_vmStream.getTracks().forEach(tr=>tr.stop());_vmStream=null;
+    showToast('MediaRecorder error: '+(e2.message||e2));return;
+  }
+  _vmRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)_vmChunks.push(e.data)};
   _vmRecorder.start(VM_SLICE_SEC*1000);
-  vmLog(log,t('vm_listening')||'Listening...');
   vmScheduleSend();
 }
 
@@ -565,46 +643,90 @@ function vmStop(){
   const btn=document.getElementById('vmBtn');
   const dot=document.getElementById('vmDot');
   if(_vmSendTimer){clearTimeout(_vmSendTimer);_vmSendTimer=null}
-  // flush remaining audio chunks before stopping
   if(_vmChunks.length){vmProcessChunk()}
   if(_vmRecorder&&_vmRecorder.state!=='inactive')_vmRecorder.stop();
-  if(_vmStream){_vmStream.getTracks().forEach(t=>t.stop());_vmStream=null}
+  if(_vmStream){_vmStream.getTracks().forEach(tr=>tr.stop());_vmStream=null}
   const span=btn.querySelector('span');
-  if(span){span.textContent=t('vm_start')||'Listen'}else{btn.textContent='🎙️ '+(t('vm_start')||'Listen')}
+  if(span)span.textContent=t('vm_start')||'Listen';
   btn.className='btn bvm-start';
   dot.style.display='none';
   _vmRecorder=null;
+  vmLog('Voice monitor stopped');
 }
 
 function vmToggle(){_vmRunning?vmStop():vmStart()}
 
-function vmLog(el,msg){
+function vmLog(msg){
+  const el=document.getElementById('vmLog');
   if(!el)return;
   const ts=new Date().toLocaleTimeString();
   el.innerHTML+='<div class="vml"><span class="vml-t">'+ts+'</span> '+esc(msg)+'</div>';
   el.scrollTop=el.scrollHeight;
 }
 
+function vmAddTranscript(text,isNew){
+  const el=document.getElementById('vmTranscript');
+  if(!el)return;
+  // remove placeholder
+  const ph=el.querySelector('.vm-ph');
+  if(ph)ph.remove();
+  const now=new Date().toLocaleTimeString();
+  const div=document.createElement('div');
+  div.className='vm-msg'+(isNew?' vm-new':'');
+  div.innerHTML='<span class="vm-time">'+now+'</span>'+esc(text);
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+}
+
+function vmClearTranscript(){
+  const el=document.getElementById('vmTranscript');
+  if(el)el.innerHTML='<div class="vm-ph"><div class="vm-ph-i">🎙️</div><p>'+(t('vm_ph_conv'))+'</p></div>';
+  const jc=document.getElementById('vmJokeCount');
+  if(jc)jc.textContent='';
+}
+
+function vmClearAll(){
+  vmClearTranscript();
+  const res=document.getElementById('vmRes');
+  if(res)res.innerHTML='<div class="vm-ph"><div class="vm-ph-i">🎭</div><p>'+(t('vm_ph_jokes'))+'</p></div>';
+  document.getElementById('vmLog').innerHTML='';
+  vmLog('Cleared');
+}
+
+function vmResetCtx(){
+  _vmCtx=[];
+  vmLog(t('vm_ctx_cleared')||'Context cleared');
+}
+
 async function vmProcessChunk(){
-  const log=document.getElementById('vmLog');
   if(!_vmChunks.length)return;
   const chunks=[..._vmChunks];_vmChunks=[];
   const blob=new Blob(chunks,{type:_vmRecorder&&_vmRecorder.mimeType?_vmRecorder.mimeType:'audio/webm'});
+  if(blob.size<2000){vmLog('Chunk too small ('+blob.size+'B), skip');return}
   try{
+    vmLog('STT: processing '+blob.size+'B...');
     const b64=await blobToBase64(blob);
-    vmLog(log,'Recognizing speech...');
     const fmt=blob.type.includes('ogg')?'ogg':blob.type.includes('mp4')?'mp4':blob.type.includes('aac')?'aac':'webm';
     const d=await api('/api/voice/stt',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({audio_base64:b64,format:fmt,language:'auto'})},30000);
-    if(!d||!d.text){vmLog(log,'(silence)');return}
+    if(!d||!d.text){
+      vmLog(t('vm_silence')||'(silence)');
+      return false;
+    }
     const txt=d.text.trim();
-    if(!txt||txt.length<2){vmLog(log,'(silence)');return}
-    vmLog(log,'Heard: "'+txt.substring(0,80)+'"');
+    if(!txt||txt.length<2){
+      vmLog(t('vm_silence')||'(silence)');
+      return false;
+    }
+    vmLog(t('vm_heard')||'Heard'+': "'+txt.substring(0,80)+'"');
+    vmAddTranscript(txt,true);
     _vmCtx.push({ts:Date.now(),text:txt});
     const cutoff=Date.now()-VM_CTX_MAX*1000;
     _vmCtx=_vmCtx.filter(e=>e.ts>cutoff);
+    return true;
   }catch(e){
-    vmLog(log,'STT error: '+(e.message||e));
+    vmLog('STT error: '+(e.message||e));
+    return false;
   }
 }
 
@@ -612,28 +734,43 @@ function vmScheduleSend(){
   if(!_vmRunning)return;
   _vmSendTimer=setTimeout(async()=>{
     if(!_vmRunning)return;
+    _vmSendCount++;
     try{
-    await vmProcessChunk();
-    if(!_vmRunning)return;
-    if(!_vmCtx.length){vmScheduleSend();return}
-    const ctx=_vmCtx.map(e=>e.text).join(' ');
-    vmLog(document.getElementById('vmLog'),'Finding joke for: "'+ctx.substring(0,60)+'..."');
-    const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},
-body:JSON.stringify({text:ctx,count:3,language:LANG})},180000)
-    if(!_vmRunning)return;
-    const res=document.getElementById('vmRes');
-    if(d&&d.jokes&&d.jokes.length){
-      d.jokes.sort((a,b)=>(b.funniness||b.rating||0)-(a.funniness||a.rating||0));
-      res.innerHTML=d.jokes.map(j=>rCard(j)).join('');
-      const firstText=d.jokes[0].text;
-      const autoTTS=document.getElementById('vmAutoTTS');
-      if(firstText&&autoTTS&&autoTTS.checked)speakJoke(firstText);
-      vmLog(document.getElementById('vmLog'),'Found '+d.jokes.length+' jokes ('+(d.matched_categories||[]).join(', ')+')');
-    }else{
-      vmLog(document.getElementById('vmLog'),'No matching jokes');
+      // Step 1: process audio chunk (STT)
+      const gotText=await vmProcessChunk();
+      
+      if(!_vmRunning)return;
+      
+      // Step 2: search for jokes every other cycle (or immediately if we got new text)
+      const shouldSearch=gotText||(_vmSendCount%2===0&&_vmCtx.length>0);
+      
+      if(shouldSearch&&_vmCtx.length>0&&!_vmSearching){
+        const ctx=_vmCtx.map(e=>e.text).join(' ');
+        vmLog(t('vm_searching')||'Finding jokes...');
+        _vmSearching=true;
+        const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({text:ctx,count:5,language:LANG})},180000);
+        _vmSearching=false;
+        if(!_vmRunning)return;
+        const res=document.getElementById('vmRes');
+        const jc=document.getElementById('vmJokeCount');
+        if(d&&d.jokes&&d.jokes.length){
+          d.jokes.sort((a,b)=>(b.funniness||b.rating||0)-(a.funniness||a.rating||0));
+          res.innerHTML=d.jokes.map(j=>rCard(j)).join('');
+          if(jc)jc.textContent=d.jokes.length+' '+(t('vm_jokes_n')||'jokes');
+          vmLog((t('vm_found')||'Found')+' '+d.jokes.length+' jokes');
+          const autoTTS=document.getElementById('vmAutoTTS');
+          if(autoTTS&&autoTTS.checked)speakJoke(d.jokes[0].text);
+        }else{
+          if(jc)jc.textContent='';
+          vmLog(t('vm_no_match')||'No matching jokes');
+        }
+      }
+    }catch(e){
+      _vmSearching=false;
+      vmLog('Error: '+(e.message||e));
     }
-    }catch(e){vmLog(document.getElementById('vmLog'),'Error: '+(e.message||e))}
-    vmScheduleSend();
+    if(_vmRunning)vmScheduleSend();
   },VM_SEND_SEC*1000);
 }
 
