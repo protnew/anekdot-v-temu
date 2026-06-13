@@ -72,17 +72,17 @@ class RateLimiter:
 _rate_limiter = RateLimiter(60, 60)
 
 # ============================================================
-# AsyncIO locks for race conditions (init in lifespan)
+# AsyncIO locks for race conditions (created eagerly, re-created in lifespan)
 # ============================================================
-_rating_lock = None
-_favorites_lock = None
-_history_lock = None
+_rating_lock = asyncio.Lock()
+_favorites_lock = asyncio.Lock()
+_history_lock = asyncio.Lock()
 
 # ============================================================
 # Top jokes cache (TTL 5 minutes)
 # ============================================================
 _top_cache = {"jokes": [], "timestamp": 0}
-_top_cache_lock = None
+_top_cache_lock = asyncio.Lock()
 _TOP_CACHE_TTL = 300  # 5 minutes
 
 # ============================================================
