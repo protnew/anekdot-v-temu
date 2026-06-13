@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  anekdot-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: anekdot-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./main.py:/app/main.py:ro
+      - ./i18n.py:/app/i18n.py:ro
+      - ./moderation.py:/app/moderation.py:ro
+      - ./static:/app/static:ro
+      - ./bot:/app/bot:ro
+      - ./test_app.py:/app/test_app.py:ro
+      - ./test_voice.py:/app/test_voice.py:ro
+      - ./test_moderation.py:/app/test_moderation.py:ro
+    environment:
+      - WHISPER_CLI_PATH=/usr/local/bin/whisper-cli
+      - WHISPER_MODEL_PATH=/app/docker/models/ggml-base.bin
+      - SILERO_VAD_PATH=/app/docker/models/silero_vad.onnx
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"

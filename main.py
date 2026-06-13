@@ -324,6 +324,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
 class SemanticSearchEngine:
+    PICKLE_PATH = None  # set after DATA_DIR is available
+
     def __init__(self):
         self.vectorizer = TfidfVectorizer(
             max_features=5000,
@@ -337,6 +339,27 @@ class SemanticSearchEngine:
         self._build_index()
 
     def _build_index(self):
+        # Try loading from pickle cache first (2 sec vs 90 sec build)
+        import pickle
+        pickle_path = DATA_DIR / "tfidf_cache.pkl"
+        jokes_mtime = JOKES_FILE.stat().st_mtime if JOKES_FILE.exists() else 0
+        if pickle_path.exists():
+            try:
+                with open(pickle_path, "rb") as f:
+                    cached = pickle.load(f)
+                # Validate cache: same joke count + same file mtime
+                if cached.get("jokes_count") == len(get_all_jokes()) and cached.get("mtime", 0) >= jokes_mtime:
+                    self.vectorizer = cached["vectorizer"]
+                    self.tfidf_matrix = cached["tfidf_matrix"]
+                    self.jokes = cached["jokes"]
+                    log.info("TF-IDF index loaded from pickle cache (%d jokes)", len(self.jokes))
+                    return
+                else:
+                    log.info("TF-IDF cache stale, rebuilding...")
+            except Exception as e:
+                log.warning("TF-IDF cache load failed: %s, rebuilding...", e)
+
+        # Build from scratch
         self.jokes = get_all_jokes()
         if not self.jokes:
             return
@@ -348,6 +371,20 @@ class SemanticSearchEngine:
             if doc.strip():
                 documents.append(doc)
         self.tfidf_matrix = self.vectorizer.fit_transform(documents)
+
+        # Save to pickle for next startup
+        try:
+            with open(pickle_path, "wb") as f:
+                pickle.dump({
+                    "vectorizer": self.vectorizer,
+                    "tfidf_matrix": self.tfidf_matrix,
+                    "jokes": self.jokes,
+                    "jokes_count": len(self.jokes),
+                    "mtime": jokes_mtime,
+                }, f, protocol=pickle.HIGHEST_PROTOCOL)
+            log.info("TF-IDF cache saved to %s", pickle_path)
+        except Exception as e:
+            log.warning("TF-IDF cache save failed: %s", e)
 
     def search(self, query: str, top_k: int = 10, min_score: float = 0.05) -> List[dict]:
         if self.tfidf_matrix is None or not self.jokes:
