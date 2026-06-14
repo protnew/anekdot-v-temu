@@ -1490,10 +1490,23 @@ async def speech_to_text(request: dict):
         wav_path = tmp_path
         if audio_format != "wav":
             wav_path = tmp_path + ".wav"
-            await _run_subprocess(["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path], timeout=10)
+            rc, stdout, stderr = await _run_subprocess(
+                ["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
+                timeout=30
+            )
+            if rc != 0 or not os.path.exists(wav_path):
+                # ffmpeg failed — try passing original file directly to whisper
+                # faster_whisper uses PyAV which can decode webm/opus natively
+                ffmpeg_err = stderr.decode()[:200] if stderr else "unknown"
+                log.warning(f"ffmpeg conversion failed (rc={rc}): {ffmpeg_err}")
+                wav_path = tmp_path  # fallback: use original file
         
-        # Step 1: Silero VAD check
-        vad_result = await asyncio.to_thread(_silero_vad_check, wav_path)
+        # Step 1: Silero VAD check (may fail on non-WAV, fallback to skip)
+        try:
+            vad_result = await asyncio.to_thread(_silero_vad_check, wav_path)
+        except Exception as vad_err:
+            log.warning(f"VAD check failed: {vad_err}, skipping VAD")
+            vad_result = {"has_speech": True, "speech_prob": 1.0, "duration_sec": 0.0, "vad_fallback": "skipped"}
         if not vad_result["has_speech"]:
             os.unlink(tmp_path)
             if wav_path != tmp_path:
