@@ -1505,15 +1505,22 @@ async def speech_to_text(request: dict):
         model_name = ""
         
         if use_faster_whisper:
-            # faster_whisper (works on Windows)
+            # faster_whisper (works on Windows) — THREAD-SAFE via lock
             from faster_whisper import WhisperModel
-            if not hasattr(speech_to_text, "_fw_model"): speech_to_text._fw_model = WhisperModel("base", device="cpu", compute_type="int8")
+            if not hasattr(speech_to_text, "_fw_model"):
+                log.info("Loading faster_whisper base model (first STT call)...")
+                speech_to_text._fw_model = WhisperModel("base", device="cpu", compute_type="int8")
+                log.info("faster_whisper model loaded successfully")
             fw_model = speech_to_text._fw_model
             lang_arg = language if language != "auto" else None
-            def _fw_transcribe():
-                segs, _ = fw_model.transcribe(wav_path, language=lang_arg)
-                return " ".join(s.text for s in segs).strip()
-            text = await asyncio.to_thread(_fw_transcribe)
+            # Use lock to prevent concurrent access to non-thread-safe model
+            if not hasattr(speech_to_text, "_fw_lock"):
+                speech_to_text._fw_lock = asyncio.Lock()
+            async with speech_to_text._fw_lock:
+                def _fw_transcribe():
+                    segs, _ = fw_model.transcribe(wav_path, language=lang_arg, beam_size=1, best_of=1)
+                    return " ".join(s.text for s in segs).strip()
+                text = await asyncio.to_thread(_fw_transcribe)
             model_name = "faster_whisper base (CPU)"
         else:
             # whisper.cpp (Linux/Docker) — "auto" lets whisper detect language
@@ -1554,9 +1561,10 @@ async def speech_to_text(request: dict):
             if 'tmp_path' in dir() and os.path.exists(p): os.unlink(p)
         raise HTTPException(status_code=504, detail=t("error.whisper_timeout"))
     except Exception as e:
+        log.error(f"STT error: {type(e).__name__}: {e}", exc_info=True)
         for p in [_p for _p in [tmp_path, wav_path] if _p]:
             if 'tmp_path' in dir() and os.path.exists(p): os.unlink(p)
-        raise HTTPException(status_code=500, detail=t("error.stt_error"))
+        raise HTTPException(status_code=500, detail=f"STT error: {type(e).__name__}: {str(e)[:200]}")
 
 
 @app.post("/api/voice/stt/file")

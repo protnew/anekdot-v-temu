@@ -7,8 +7,8 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/static/favicon.ico">
 <style>
-:root{--bg:#060a13;--bg2:#0c1220;--card:#0f172a;--card2:#162033;--brd:#1e293b;--txt:#e2e8f0;--dim:#94a3b8;--mut:#64748b;--acc:#00d4ff;--pur:#8b5cf6;--grn:#22c55e;--red:#ef4444;--org:#f59e0b;--gld:#fbbf24;--rad:12px;--fnt:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--mon:'SF Mono',monospace;--shd:0 4px 24px rgba(0,0,0,.4);--tts:#1a1040}
-[data-theme="light"]{--bg:#f1f5f9;--bg2:#e2e8f0;--card:#fff;--card2:#f8fafc;--brd:#cbd5e1;--txt:#0f172a;--dim:#475569;--mut:#94a3b8;--acc:#0284c7;--pur:#7c3aed;--grn:#16a34a;--red:#dc2626;--org:#d97706;--gld:#d97706;--shd:0 4px 24px rgba(0,0,0,.08);--tts:#ede9fe}
+:root{--bg:#0a0e1a;--bg2:#0f1422;--card:#121829;--card2:#1a2138;--brd:#252d44;--txt:#e8edf5;--dim:#9ba8c0;--mut:#5a6680;--acc:#3b82f6;--pur:#8b5cf6;--grn:#10b981;--red:#ef4444;--org:#f59e0b;--gld:#fbbf24;--rad:14px;--fnt:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--mon:'SF Mono',monospace;--shd:0 4px 24px rgba(0,0,0,.5);--tts:#1a1040}
+[data-theme="light"]{--bg:#f0f4f8;--bg2:#e2e8f0;--card:#fff;--card2:#f8fafc;--brd:#cbd5e1;--txt:#0f172a;--dim:#475569;--mut:#94a3b8;--acc:#2563eb;--pur:#7c3aed;--grn:#059669;--red:#dc2626;--org:#d97706;--gld:#d97706;--shd:0 4px 24px rgba(0,0,0,.08);--tts:#ede9fe}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--fnt);background:var(--bg);color:var(--txt);min-height:100vh;transition:background .3s,color .3s}
 a{color:var(--acc)}
@@ -48,8 +48,8 @@ textarea::placeholder{color:var(--mut)}
 .bp{background:var(--pur);color:#fff}
 .bg{background:var(--card);border:1px solid var(--brd);color:var(--dim)}.bg:hover{color:var(--txt);border-color:var(--acc)}
 .bs{padding:5px 10px;font-size:11px}
-.jc{background:var(--card);border:1px solid var(--brd);border-radius:var(--rad);padding:16px;margin-bottom:10px;border-left:3px solid var(--acc);animation:fi .3s ease}
-.jc:hover{background:var(--card2)}
+.jc{background:var(--card);border:1px solid var(--brd);border-radius:var(--rad);padding:16px;margin-bottom:10px;border-left:3px solid var(--acc);transition:border-color .2s,box-shadow .2s}
+.jc:hover{background:var(--card2);box-shadow:0 2px 12px rgba(59,130,246,.1)}
 @keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .jt{font-size:14px;line-height:1.6;white-space:pre-wrap;margin-bottom:10px}
 .jm{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px}
@@ -154,9 +154,10 @@ textarea::placeholder{color:var(--mut)}
 <div id="offB" style="display:none;background:var(--red);color:#fff;padding:8px;border-radius:8px;margin-bottom:10px;text-align:center" data-i18n="offline">Server unavailable</div>
 <div class="tc active" id="tab-voice">
 <div class="vm-bar">
-<button class="btn bvm-start" id="vmBtn">🎙️ <span data-i18n="vm_start">Listen</span></button>
+<button class="btn bvm-start" id="vmBtn">🎤 <span data-i18n="vm_start">Listen</span></button>
 <span class="vm-dot" id="vmDot" style="display:none"></span>
-<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="vmAutoTTS"> <span data-i18n="vm_autotts">Auto-play jokes</span></label>
+<span id="vmStatus" style="font-size:13px;font-weight:600;flex:1;min-width:100px"></span>
+<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="vmAutoTTS"> <span data-i18n="vm_autotts">Auto-play</span></label>
 <button class="btn bs bg" onclick="vmClearAll()" data-i18n="vm_clear">Clear</button>
 <button class="btn bs bg" onclick="vmResetCtx()" data-i18n="vm_reset">Reset</button>
 </div>
@@ -227,7 +228,7 @@ textarea::placeholder{color:var(--mut)}
 </div>
 <div class="tp" id="ttsP"><span>🔊</span><span class="tt" id="ttsT"></span><button class="btn bs bg" onclick="stopTTS()">■ <span data-i18n="b_stop">Stop</span></button><span class="tx" onclick="stopTTS()">×</span></div>
 <div class="toast" id="toast"></div>
-<div class="ft"><span data-i18n="title">Joke in Context</span> v3.19.0 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
+<div class="ft"><span data-i18n="title">Joke in Context</span> v3.20.0 &middot; <a href="https://github.com/protnew/anekdot-v-temu" target="_blank">GitHub</a></div>
 <script>
 const I18N={
 en:{title:"Joke in Context",sub:"AI CONTEXTUAL JOKES",s_jokes:"Jokes",s_cats:"Categories",s_avg:"Avg Rating",s_favs:"Favorites",
@@ -244,7 +245,7 @@ j_count:"jokes",topics:"Topics:",found:"Found:",describe:"Describe a situation!"
 fun:"Funniness",off:"Offensiveness",clean:"Clean",
 fav_a:"Favorite",fav_r:"Favorited",
 q_work:"Work",q_it:"IT",q_fam:"Family",q_mon:"Money",q_love:"Love",q_hp:"Health",q_ai:"AI",q_cat:"Cats",
-t_voice:"🎙️ Voice",vm_start:"Listen",vm_stop:"Stop",vm_desc:"Microphone listens to your conversation, recognizes speech and automatically finds matching jokes. Just press Listen and start talking!",vm_jokes:"Matching Jokes",vm_mic_denied:"Microphone access denied",vm_clear:"Clear",vm_reset:"Reset",vm_autotts:"Auto-play jokes",vm_ctx_cleared:"Context cleared",vm_listening:"Listening...",vm_conv:"Live Conversation",vm_ph_conv:"Press Listen and start talking. Everything you say will appear here in real time.",vm_ph_jokes:"Jokes matching your conversation will appear here automatically.",vm_debug:"Debug log",vm_heard:"Heard",vm_silence:"(silence detected)",vm_recognizing:"Recognizing...",vm_searching:"Finding jokes...",vm_found:"Found",vm_no_match:"No matching jokes yet",vm_jokes_n:"jokes"},
+t_voice:"🎙️ Voice",vm_start:"Listen",vm_stop:"Stop",vm_desc:"Microphone listens to your conversation, recognizes speech and automatically finds matching jokes. Just press Listen and start talking!",vm_jokes:"Matching Jokes",vm_mic_denied:"Microphone access denied",vm_clear:"Clear",vm_reset:"Reset",vm_autotts:"Auto-play jokes",vm_ctx_cleared:"Context cleared",vm_listening:"Listening...",vm_conv:"Live Conversation",vm_ph_conv:"Press Listen and start talking. Everything you say will appear here in real time.",vm_ph_jokes:"Jokes matching your conversation will appear here automatically.",vm_debug:"Debug log",vm_heard:"Heard",vm_silence:"(silence detected)",vm_recognizing:"Recognizing speech...",vm_searching:"Finding jokes...",vm_found:"Found",vm_no_match:"No matching jokes yet",vm_jokes_n:"jokes"},
 ru:{title:"Анекдот в Тему",sub:"AI ШУТКИ",
 s_jokes:"Анекдотов",s_cats:"Категорий",s_avg:"Ср. рейтинг",s_favs:"Избранное",
 t_ctx:"🎯 В тему",t_cat:"📂 Категории",t_rnd:"🎲 Случайный",t_fav:"❤️ Избранное",t_srch:"🔍 Поиск",
@@ -598,24 +599,37 @@ a.onended=()=>stopTTS();a.onerror=()=>{stopTTS();showToast(t('err_tts'))};a.play
 function showToast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2500)}
 
 // ============================================================
-// Voice Monitor v2 — split-screen: LEFT live transcript, RIGHT jokes
+// Voice Monitor v3 — robust split-screen with proper error handling
 // ============================================================
 
-let _vmStream=null,_vmRecorder=null,_vmChunks=[],_vmRunning=false,_vmSendTimer=null,_vmCtx=[],_vmSendCount=0,_vmSearching=false;
-const VM_SLICE_SEC=5, VM_SEND_SEC=8, VM_CTX_MAX=60;
+let _vmStream=null,_vmRecorder=null,_vmChunks=[],_vmRunning=false;
+let _vmSendTimer=null,_vmCtx=[],_vmSendCount=0;
+let _vmProcessing=false;  // CRITICAL: prevents overlapping STT requests
+const VM_SLICE_SEC=5, VM_CTX_MAX=90;
+
+function vmSetStatus(msg,type){
+  const el=document.getElementById('vmStatus');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color=type==='error'?'var(--red)':type==='ok'?'var(--grn)':type==='work'?'var(--org)':'var(--mut)';
+}
 
 async function vmStart(){
   if(_vmRunning)return;
   _vmRunning=true;
   const btn=document.getElementById('vmBtn');
   const dot=document.getElementById('vmDot');
+  vmSetStatus(t('vm_listening')||'Requesting microphone...','work');
   try{
     _vmStream=await navigator.mediaDevices.getUserMedia({audio:true});
   }catch(e){
     _vmRunning=false;
-    showToast(t('vm_mic_denied')||'Microphone access denied');return;
+    vmSetStatus(t('vm_mic_denied')||'Microphone denied','error');
+    showToast(t('vm_mic_denied')||'Microphone access denied');
+    return;
   }
   if(!_vmRunning){_vmStream.getTracks().forEach(tr=>tr.stop());_vmStream=null;return}
+  
   const span=btn.querySelector('span');
   if(span)span.textContent=t('vm_stop')||'Stop';
   btn.className='btn bvm-stop';
@@ -623,18 +637,28 @@ async function vmStart(){
   _vmChunks=[];
   _vmCtx=[];
   _vmSendCount=0;
+  _vmProcessing=false;
   vmClearTranscript();
   vmLog('Voice monitor started');
-  const mime=MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')?'audio/ogg;codecs=opus':MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':MediaRecorder.isTypeSupported('audio/aac')?'audio/aac':'';
+  vmSetStatus(t('vm_listening')||'Listening...','ok');
+  
+  // Determine supported audio format
+  const mime=MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':
+    MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')?'audio/ogg;codecs=opus':
+    MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':
+    MediaRecorder.isTypeSupported('audio/aac')?'audio/aac':'';
   try{
     _vmRecorder=new MediaRecorder(_vmStream,mime?{mimeType:mime}:{});
   }catch(e2){
     _vmRunning=false;_vmStream.getTracks().forEach(tr=>tr.stop());_vmStream=null;
-    showToast('MediaRecorder error: '+(e2.message||e2));return;
+    vmSetStatus('MediaRecorder error: '+(e2.message||e2),'error');
+    return;
   }
   _vmRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)_vmChunks.push(e.data)};
   _vmRecorder.start(VM_SLICE_SEC*1000);
-  vmScheduleSend();
+  
+  // Start processing loop after 6 seconds (let first chunk accumulate)
+  _vmSendTimer=setTimeout(vmCycle,VM_SLICE_SEC*1000+1000);
 }
 
 function vmStop(){
@@ -643,15 +667,17 @@ function vmStop(){
   const btn=document.getElementById('vmBtn');
   const dot=document.getElementById('vmDot');
   if(_vmSendTimer){clearTimeout(_vmSendTimer);_vmSendTimer=null}
-  if(_vmChunks.length){vmProcessChunk()}
-  if(_vmRecorder&&_vmRecorder.state!=='inactive')_vmRecorder.stop();
+  // Don't process remaining chunks on stop (prevents race condition)
+  if(_vmRecorder&&_vmRecorder.state!=='inactive'){try{_vmRecorder.stop()}catch(e){}}
   if(_vmStream){_vmStream.getTracks().forEach(tr=>tr.stop());_vmStream=null}
   const span=btn.querySelector('span');
   if(span)span.textContent=t('vm_start')||'Listen';
   btn.className='btn bvm-start';
   dot.style.display='none';
   _vmRecorder=null;
+  _vmProcessing=false;
   vmLog('Voice monitor stopped');
+  vmSetStatus('','mut');
 }
 
 function vmToggle(){_vmRunning?vmStop():vmStart()}
@@ -664,23 +690,24 @@ function vmLog(msg){
   el.scrollTop=el.scrollHeight;
 }
 
-function vmAddTranscript(text,isNew){
+function vmAddTranscript(text){
   const el=document.getElementById('vmTranscript');
   if(!el)return;
-  // remove placeholder
   const ph=el.querySelector('.vm-ph');
   if(ph)ph.remove();
   const now=new Date().toLocaleTimeString();
   const div=document.createElement('div');
-  div.className='vm-msg'+(isNew?' vm-new':'');
+  div.className='vm-msg vm-new';
   div.innerHTML='<span class="vm-time">'+now+'</span>'+esc(text);
   el.appendChild(div);
+  // Remove "new" highlight after 2s
+  setTimeout(()=>div.classList.remove('vm-new'),2000);
   el.scrollTop=el.scrollHeight;
 }
 
 function vmClearTranscript(){
   const el=document.getElementById('vmTranscript');
-  if(el)el.innerHTML='<div class="vm-ph"><div class="vm-ph-i">🎙️</div><p>'+(t('vm_ph_conv'))+'</p></div>';
+  if(el)el.innerHTML='<div class="vm-ph"><div class="vm-ph-i">🎤</div><p>'+(t('vm_ph_conv'))+'</p></div>';
   const jc=document.getElementById('vmJokeCount');
   if(jc)jc.textContent='';
 }
@@ -690,88 +717,118 @@ function vmClearAll(){
   const res=document.getElementById('vmRes');
   if(res)res.innerHTML='<div class="vm-ph"><div class="vm-ph-i">🎭</div><p>'+(t('vm_ph_jokes'))+'</p></div>';
   document.getElementById('vmLog').innerHTML='';
+  _vmCtx=[];
   vmLog('Cleared');
+  vmSetStatus('','mut');
 }
 
 function vmResetCtx(){
   _vmCtx=[];
   vmLog(t('vm_ctx_cleared')||'Context cleared');
+  vmSetStatus(t('vm_ctx_cleared')||'Context cleared','mut');
 }
 
-async function vmProcessChunk(){
-  if(!_vmChunks.length)return;
-  const chunks=[..._vmChunks];_vmChunks=[];
-  const blob=new Blob(chunks,{type:_vmRecorder&&_vmRecorder.mimeType?_vmRecorder.mimeType:'audio/webm'});
-  if(blob.size<2000){vmLog('Chunk too small ('+blob.size+'B), skip');return}
-  try{
-    vmLog('STT: processing '+blob.size+'B...');
-    const b64=await blobToBase64(blob);
-    const fmt=blob.type.includes('ogg')?'ogg':blob.type.includes('mp4')?'mp4':blob.type.includes('aac')?'aac':'webm';
-    const d=await api('/api/voice/stt',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({audio_base64:b64,format:fmt,language:'auto'})},30000);
-    if(!d||!d.text){
-      vmLog(t('vm_silence')||'(silence)');
-      return false;
-    }
-    const txt=d.text.trim();
-    if(!txt||txt.length<2){
-      vmLog(t('vm_silence')||'(silence)');
-      return false;
-    }
-    vmLog(t('vm_heard')||'Heard'+': "'+txt.substring(0,80)+'"');
-    vmAddTranscript(txt,true);
-    _vmCtx.push({ts:Date.now(),text:txt});
-    const cutoff=Date.now()-VM_CTX_MAX*1000;
-    _vmCtx=_vmCtx.filter(e=>e.ts>cutoff);
-    return true;
-  }catch(e){
-    vmLog('STT error: '+(e.message||e));
-    return false;
-  }
-}
-
-function vmScheduleSend(){
+// Main processing cycle — runs sequentially, NO overlapping requests
+async function vmCycle(){
   if(!_vmRunning)return;
-  _vmSendTimer=setTimeout(async()=>{
-    if(!_vmRunning)return;
-    _vmSendCount++;
-    try{
-      // Step 1: process audio chunk (STT)
-      const gotText=await vmProcessChunk();
+  if(_vmProcessing){vmLog('Previous cycle still running, skipping');_vmScheduleNext();return}
+  _vmProcessing=true;
+  
+  try{
+    // Step 1: Grab audio chunks and send to STT
+    if(_vmChunks.length>0){
+      const chunks=[..._vmChunks];_vmChunks=[];
+      const blob=new Blob(chunks,{type:_vmRecorder&&_vmRecorder.mimeType?_vmRecorder.mimeType:'audio/webm'});
       
-      if(!_vmRunning)return;
-      
-      // Step 2: search for jokes every other cycle (or immediately if we got new text)
-      const shouldSearch=gotText||(_vmSendCount%2===0&&_vmCtx.length>0);
-      
-      if(shouldSearch&&_vmCtx.length>0&&!_vmSearching){
-        const ctx=_vmCtx.map(e=>e.text).join(' ');
-        vmLog(t('vm_searching')||'Finding jokes...');
-        _vmSearching=true;
-        const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({text:ctx,count:5,language:LANG})},180000);
-        _vmSearching=false;
-        if(!_vmRunning)return;
-        const res=document.getElementById('vmRes');
-        const jc=document.getElementById('vmJokeCount');
-        if(d&&d.jokes&&d.jokes.length){
-          d.jokes.sort((a,b)=>(b.funniness||b.rating||0)-(a.funniness||a.rating||0));
-          res.innerHTML=d.jokes.map(j=>rCard(j)).join('');
-          if(jc)jc.textContent=d.jokes.length+' '+(t('vm_jokes_n')||'jokes');
-          vmLog((t('vm_found')||'Found')+' '+d.jokes.length+' jokes');
-          const autoTTS=document.getElementById('vmAutoTTS');
-          if(autoTTS&&autoTTS.checked)speakJoke(d.jokes[0].text);
-        }else{
-          if(jc)jc.textContent='';
-          vmLog(t('vm_no_match')||'No matching jokes');
+      if(blob.size>2000){
+        vmSetStatus(t('vm_recognizing')||'Recognizing speech...','work');
+        vmLog('STT: '+blob.size+'B '+blob.type);
+        
+        const b64=await blobToBase64(blob);
+        const fmt=blob.type.includes('ogg')?'ogg':blob.type.includes('mp4')?'mp4':blob.type.includes('aac')?'aac':'webm';
+        
+        // Use raw fetch (not api()) to get error details
+        let sttResult=null;
+        try{
+          const r=await fetch('/api/voice/stt',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({audio_base64:b64,format:fmt,language:'auto'}),
+            signal:AbortSignal.timeout(60000)});
+          if(!r.ok){
+            const errBody=await r.text();
+            vmLog('STT HTTP '+r.status+': '+errBody.substring(0,150));
+            vmSetStatus('STT error ('+r.status+')','error');
+          }else{
+            sttResult=await r.json();
+          }
+        }catch(fetchErr){
+          vmLog('STT fetch error: '+(fetchErr.message||fetchErr));
+          vmSetStatus('STT network error','error');
         }
+        
+        if(!_vmRunning){_vmProcessing=false;return}
+        
+        if(sttResult&&sttResult.text&&sttResult.text.trim().length>=2){
+          const txt=sttResult.text.trim();
+          vmLog(t('vm_heard')||'Heard'+': "'+txt.substring(0,80)+'"');
+          vmAddTranscript(txt);
+          _vmCtx.push({ts:Date.now(),text:txt});
+          // Keep only last 90 seconds of context
+          const cutoff=Date.now()-VM_CTX_MAX*1000;
+          _vmCtx=_vmCtx.filter(e=>e.ts>cutoff);
+        }else if(sttResult){
+          vmLog(sttResult.note||t('vm_silence')||'(no speech detected)');
+        }
+      }else{
+        vmLog('Audio chunk too small ('+blob.size+'B)');
       }
-    }catch(e){
-      _vmSearching=false;
-      vmLog('Error: '+(e.message||e));
+    }else{
+      vmLog('No audio chunks yet');
     }
-    if(_vmRunning)vmScheduleSend();
-  },VM_SEND_SEC*1000);
+    
+    if(!_vmRunning){_vmProcessing=false;return}
+    
+    // Step 2: Search for matching jokes if we have context
+    if(_vmCtx.length>0){
+      const ctx=_vmCtx.map(e=>e.text).join(' ');
+      vmSetStatus(t('vm_searching')||'Finding jokes...','work');
+      vmLog('Searching jokes for: "'+ctx.substring(0,60)+'"');
+      
+      const d=await api('/api/jokes/context',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({text:ctx,count:5,language:LANG})},60000);
+      
+      if(!_vmRunning){_vmProcessing=false;return}
+      
+      const res=document.getElementById('vmRes');
+      const jc=document.getElementById('vmJokeCount');
+      if(d&&d.jokes&&d.jokes.length){
+        d.jokes.sort((a,b)=>(b.funniness||b.rating||0)-(a.funniness||a.rating||0));
+        res.innerHTML=d.jokes.map(j=>rCard(j)).join('');
+        if(jc)jc.textContent=d.jokes.length+' '+(t('vm_jokes_n')||'jokes');
+        vmLog((t('vm_found')||'Found')+' '+d.jokes.length+' jokes');
+        vmSetStatus((t('vm_found')||'Found')+' '+d.jokes.length,'ok');
+        const autoTTS=document.getElementById('vmAutoTTS');
+        if(autoTTS&&autoTTS.checked)speakJoke(d.jokes[0].text);
+      }else{
+        if(jc)jc.textContent='';
+        vmLog(t('vm_no_match')||'No matching jokes');
+        if(_vmCtx.length>0)vmSetStatus(t('vm_listening')||'Listening...','ok');
+      }
+    }else{
+      vmSetStatus(t('vm_listening')||'Listening...','ok');
+    }
+  }catch(e){
+    vmLog('Cycle error: '+(e.message||e));
+    vmSetStatus('Error: '+(e.message||e),'error');
+  }
+  
+  _vmProcessing=false;
+  _vmScheduleNext();
+}
+
+function _vmScheduleNext(){
+  if(!_vmRunning)return;
+  // Schedule next cycle — 3 second gap between cycles
+  _vmSendTimer=setTimeout(vmCycle,3000);
 }
 
 function blobToBase64(blob){
